@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useEffect, useRef, useState } from 'react';
 import type { ImportedBookmarkNode, BookmarkImportRequest, BookmarkImportSummary } from '../../domain/importedBookmarks';
 import { parseBookmarkHtml } from '../../services/bookmarkHtml';
@@ -12,6 +13,7 @@ interface Props {
 interface Preview { nodes: ImportedBookmarkNode[]; summary: BookmarkImportSummary; filename: string; fingerprint: string }
 
 export function BookmarkImport({ disabled, onImport, onBusyChange }: Props) {
+  useLocale();
   const [preview, setPreview] = useState<Preview | null>(null);
   const [parsing, setParsing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -22,8 +24,8 @@ export function BookmarkImport({ disabled, onImport, onBusyChange }: Props) {
   const submitting = useRef(false);
   useEffect(() => () => { request.current++; }, []);
   return <div className="bookmark-import">
-    <label htmlFor="bookmark-html-file">Import bookmarks</label>
-    <p className="muted">Import an exported browser bookmark HTML file.</p>
+    <label htmlFor="bookmark-html-file">{t("Import bookmarks")}</label>
+    <p className="muted">{t("Import an exported browser bookmark HTML file.")}</p>
     <input ref={input} id="bookmark-html-file" type="file" accept=".html,.htm,text/html" disabled={disabled || parsing || busy}
       onChange={async event => {
         const file = event.currentTarget.files?.[0];
@@ -42,15 +44,15 @@ export function BookmarkImport({ disabled, onImport, onBusyChange }: Props) {
           setPreview({ ...parsed, filename: file.name, fingerprint });
         } catch (cause) {
           if (token === request.current) {
-            setError(cause instanceof Error ? cause.message : 'Unable to read this bookmark file.');
+            setError(cause instanceof Error ? cause.message : t("Unable to read this bookmark file."));
             if (input.current) input.current.value = '';
           }
         } finally { if (token === request.current) setParsing(false); }
       }} />
-    {parsing && <p role="status">Reading bookmarks…</p>}
+    {parsing && <p role="status">{t("Reading bookmarks…")}</p>}
     {preview && <div className="bookmark-import-preview">
       <p className="bookmark-import-filename" title={preview.filename}>{preview.filename}</p>
-      <p role="status">{preview.summary.bookmarks} bookmarks · {preview.summary.folders} folders</p>
+      <p role="status">{t("{count} bookmarks · {folders} folders", { count: preview.summary.bookmarks, folders: preview.summary.folders })}</p>
       <div className="bookmark-import-actions">
         <button type="button" disabled={disabled || busy} onClick={async () => {
           if (submitting.current) return;
@@ -63,21 +65,21 @@ export function BookmarkImport({ disabled, onImport, onBusyChange }: Props) {
               if (!(cause instanceof RepeatedBookmarkImportError)) throw cause;
               // The storage lock is released before asking. An explicit repeat
               // still builds from the freshest snapshot in a new locked mutation.
-              if (!window.confirm(cause.message)) return;
+              if (!window.confirm(t(cause.message))) return;
               summary = await onImport({ ...importRequest, allowRepeat: true });
             }
             setSuccess(summary); setPreview(null);
             if (input.current) input.current.value = '';
-          } catch (cause) { setError(cause instanceof Error ? cause.message : 'Bookmarks could not be imported.'); }
+          } catch (cause) { setError(cause instanceof Error ? cause.message : t("Bookmarks could not be imported.")); }
           finally { submitting.current = false; setBusy(false); onBusyChange(false); }
-        }}>{busy ? 'Importing…' : 'Import'}</button>
+        }}>{busy ? t("Importing…") : t("Import")}</button>
         <button type="button" disabled={busy} onClick={() => {
           setPreview(null); setError(null);
           if (input.current) input.current.value = '';
-        }}>Cancel</button>
+        }}>{t("Cancel")}</button>
       </div>
     </div>}
-    {success && <p role="status">Imported {success.bookmarks} bookmarks and {success.folders} folders.</p>}
-    {error && <p className="form-error" role="alert">{error}</p>}
+    {success && <p role="status">{t("Imported {count} bookmarks and {folders} folders.", { count: success.bookmarks, folders: success.folders })}</p>}
+    {error && <p className="form-error" role="alert">{t(error)}</p>}
   </div>;
 }

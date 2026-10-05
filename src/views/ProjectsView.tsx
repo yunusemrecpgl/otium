@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import type { Folder } from '../domain/folder';
 import type { WorkspaceItem } from '../domain/workspace';
 import { useEffect, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ interface ProjectsViewProps {
 }
 
 export function ProjectsView({ folders, workspaceItems, projects, links, availableLinks, onOpen, ready, onCreate, onSavingChange }: ProjectsViewProps) {
+  useLocale();
   const [creating, setCreating] = useState(false);
   const [returning, setReturning] = useState(false);
   const newButton = useRef<HTMLButtonElement>(null);
@@ -41,23 +43,23 @@ export function ProjectsView({ folders, workspaceItems, projects, links, availab
   return (
     <main className={`secondary-view projects-view${returning ? ' page-enter-back' : ''}`}>
       <div className="projects-heading">
-        <h1>Projects</h1>
-        <button ref={newButton} type="button" className="quiet-button" disabled={!ready} onClick={() => { setReturning(false); setCreating(true); }}><span aria-hidden="true">+</span> New Project</button>
+        <h1>{t("Projects")}</h1>
+        <button ref={newButton} type="button" className="quiet-button" disabled={!ready} onClick={() => { setReturning(false); setCreating(true); }}><span aria-hidden="true">+</span> {t("New Project")}</button>
       </div>
-      {ready && activeProjects.length === 0 && <p className="muted">No projects yet.</p>}
+      {ready && activeProjects.length === 0 && <p className="muted">{t("No projects yet.")}</p>}
       <ul className="projects-list">
         {activeProjects.map((project) => {
           const resolved = resolveProjectLinks(project, links);
           return (
           <li key={project.id}>
-            <button type="button" className="project-list-item project-navigation-button" onPointerEnter={preloadProjectPage} onFocus={preloadProjectPage} onClick={() => onOpen(project)} aria-label={`Open project ${project.name}`}>
+            <button type="button" className="project-list-item project-navigation-button" onPointerEnter={preloadProjectPage} onFocus={preloadProjectPage} onClick={() => onOpen(project)} aria-label={t("Open project {0}", { 0: project.name })}>
             <span className="project-list-name" title={project.name}>{project.name}</span>
-            <span className="project-preview-row" aria-label={`${resolved.length} links`}>
+            <span className="project-preview-row" aria-label={t("{0} links", { 0: resolved.length })}>
               {resolved.slice(0, PROJECT_PREVIEW_LIMIT).map((link) => (
                 <span key={link.id} className="project-preview-icon" title={link.title}><LinkFavicon key={link.url} title={link.title} url={link.url} /></span>
               ))}
               {resolved.length > PROJECT_PREVIEW_LIMIT && <span className="muted preview-overflow">+{resolved.length - PROJECT_PREVIEW_LIMIT}</span>}
-              {resolved.length === 0 && <span className="muted preview-overflow">No links</span>}
+              {resolved.length === 0 && <span className="muted preview-overflow">{t("No links")}</span>}
             </span>
             </button>
           </li>

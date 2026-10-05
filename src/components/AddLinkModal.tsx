@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { NewLink } from '../domain/link';
@@ -10,6 +11,7 @@ interface AddLinkModalProps {
 }
 
 export function AddLinkModal({ onClose, onAdd, onCreateFolder }: AddLinkModalProps) {
+  useLocale();
   const dialog = useRef<HTMLDialogElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
@@ -57,16 +59,16 @@ export function AddLinkModal({ onClose, onAdd, onCreateFolder }: AddLinkModalPro
       onClose();
     }}>
       <form onSubmit={submit}>
-        <h1 id="add-link-title">Add Link</h1>
-        <label htmlFor="site-name">Site name</label>
+        <h1 id="add-link-title">{t("Add Link")}</h1>
+        <label htmlFor="site-name">{t("Site name")}</label>
         <input ref={nameInput} id="site-name" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={120} disabled={busy} autoComplete="off" />
         <label htmlFor="site-url">URL</label>
         <input id="site-url" type="text" inputMode="url" value={url} onChange={(event) => setUrl(event.target.value)} required disabled={busy} autoComplete="off" spellCheck={false} aria-invalid={!!error} aria-describedby={error ? 'link-error' : undefined} />
-        {error && <p id="link-error" className="form-error" role="alert">{error}</p>}
+        {error && <p id="link-error" className="form-error" role="alert">{t(error)}</p>}
         <div className="modal-actions">
-          {onCreateFolder && <button type="button" onClick={onCreateFolder} disabled={busy}>Create Folder</button>}
-          <button type="button" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="submit" disabled={busy || !title.trim() || !url.trim()}>{busy ? 'Adding…' : 'Add'}</button>
+          {onCreateFolder && <button type="button" onClick={onCreateFolder} disabled={busy}>{t("Create Folder")}</button>}
+          <button type="button" onClick={onClose} disabled={busy}>{t("Cancel")}</button>
+          <button type="submit" disabled={busy || !title.trim() || !url.trim()}>{busy ? t("Adding…") : t("Add")}</button>
         </div>
       </form>
     </dialog>

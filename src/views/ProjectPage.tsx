@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import type { Folder } from '../domain/folder';
 import type { WorkspaceItem } from '../domain/workspace';
 import type { Theme } from '../domain/settings';
@@ -29,6 +30,7 @@ interface Props {
   project: Project;
   canvasItems: ProjectCanvasItem[];
   widgets: WidgetInstance[];
+  enabledWidgetTypes: ReadonlySet<string>;
   onAddWidget: (projectId: string, type: 'note' | 'todo' | 'resource' | 'web-data' | 'clip' | 'compare' | 'rss' | 'formula' | 'page-watch' | 'text', position: { x: number; y: number }) => Promise<void>;
   onUpdateWidget: (id: string, config: ProjectWidgetConfig) => Promise<void>;
   onTrashCanvasItems: (projectId: string, ids: string[]) => Promise<void>;
@@ -50,7 +52,8 @@ interface Props {
   onDelete: (id: string) => Promise<void>;
 }
 
-export function ProjectPage({ theme, onToggleTheme, folders, workspaceItems, project, canvasItems, widgets, onAddWidget, onUpdateWidget, onTrashCanvasItems, onDuplicateCanvasItem, canvasState, onCanvasZoom, onEnsureCanvas, onMoveCanvasItem, onMoveCanvasItems, onResizeCanvasItem, links, availableLinks, addedToHome, onBack, onSave, onAddToHome, onSavingChange, onSetColor, onDelete }: Props) {
+export function ProjectPage({ theme, onToggleTheme, folders, workspaceItems, project, canvasItems, widgets, enabledWidgetTypes, onAddWidget, onUpdateWidget, onTrashCanvasItems, onDuplicateCanvasItem, canvasState, onCanvasZoom, onEnsureCanvas, onMoveCanvasItem, onMoveCanvasItems, onResizeCanvasItem, links, availableLinks, addedToHome, onBack, onSave, onAddToHome, onSavingChange, onSetColor, onDelete }: Props) {
+  useLocale();
   const page = useRef<HTMLElement>(null);
   const initialization = useRef<string | null>(null);
   const ensureCanvas = useRef(onEnsureCanvas); ensureCanvas.current = onEnsureCanvas;
@@ -127,36 +130,35 @@ export function ProjectPage({ theme, onToggleTheme, folders, workspaceItems, pro
     }} rightActions={<><ThemeToggle theme={theme} onToggle={onToggleTheme} /><div ref={colorControl} className="project-page-color-control">
           <button ref={colorButton} type="button" className="quiet-button project-page-color-button" disabled={busy} aria-expanded={colorOpen}
             onClick={() => setColorOpen(open => !open)}>
-            <span className="project-color-swatch" data-project-color={project.color ?? 'neutral'} aria-hidden="true" />Color
-          </button>
-          {colorOpen && <div className="project-color-palette project-page-color-palette" role="group" aria-label="Project color">
+            <span className="project-color-swatch" data-project-color={project.color ?? 'neutral'} aria-hidden="true" />{t("Color")}</button>
+          {colorOpen && <div className="project-color-palette project-page-color-palette" role="group" aria-label={t("Project color")}>
             {PROJECT_COLORS.map(color => <button key={color} type="button" className="project-color-swatch" data-project-color={color}
-              aria-label={color} title={color} aria-pressed={(project.color ?? 'neutral') === color} disabled={busy} onClick={async () => {
+              aria-label={t(color)} title={t(color)} aria-pressed={(project.color ?? 'neutral') === color} disabled={busy} onClick={async () => {
                 if (colorPending.current) return;
                 colorPending.current = true; setColorOpen(false); setColorSaving(true); setError(null); onSavingChange(true);
                 try { await onSetColor(project.id, color); }
-                catch (cause) { setError(cause instanceof Error ? cause.message : 'Project color could not be saved.'); }
+                catch (cause) { setError(cause instanceof Error ? cause.message : t("Project color could not be saved.")); }
                 finally { colorPending.current = false; setColorSaving(false); onSavingChange(false); }
               }} />)}
           </div>}
         </div>
         <button type="button" className="text-button project-destructive-action" disabled={busy || opening}
-          onClick={() => { setColorOpen(false); setConfirmDelete(true); }}><Trash2 size={14} aria-hidden="true" />Delete Project</button></>}>
+          onClick={() => { setColorOpen(false); setConfirmDelete(true); }}><Trash2 size={14} aria-hidden="true" />{t("Delete Project")}</button></>}>
         <button type="button" className="quiet-button" disabled={opening || busy || !activeLinks.length} onClick={async () => {
           setOpening(true); setError(null);
           try { await browserTabsService.openProject(project, activeLinks); }
-          catch (cause) { setError(cause instanceof Error ? cause.message : 'Some project websites could not be opened.'); }
+          catch (cause) { setError(cause instanceof Error ? cause.message : t("Some project websites could not be opened.")); }
           finally { setOpening(false); }
-        }}>{opening ? 'Opening…' : 'Open All'}</button>
+        }}>{opening ? t("Opening…") : t("Open All")}</button>
         <button type="button" className="quiet-button" onClick={() => { void addToHome(); }} disabled={addedToHome || busy}>
-          {adding ? 'Adding…' : addedToHome ? 'Added to Home' : 'Add to Home'}
+          {adding ? t("Adding…") : addedToHome ? t("Added to Home") : t("Add to Home")}
         </button>
 
     </ProjectToolbar>
-    {canvasReady || canvasStarted.current ? <ProjectCanvas overlay={<>         <ProjectAddMenu disabled={busy || opening} onWebsite={editProject} onWidget={type => {
+    {canvasReady || canvasStarted.current ? <ProjectCanvas overlay={<>         <ProjectAddMenu disabled={busy || opening} enabledWidgetTypes={enabledWidgetTypes} onWebsite={editProject} onWidget={type => {
           if ((type !== 'note' && type !== 'todo' && type !== 'resource' && type !== 'web-data' && type !== 'clip' && type !== 'compare' && type !== 'rss' && type !== 'formula' && type !== 'page-watch' && type !== 'text') || widgetPending.current) return;
           widgetPending.current = true; setWidgetAdding(true); setError(null);
-          void onAddWidget(project.id, type, widgetPosition.current).catch(cause => setError(cause instanceof Error ? cause.message : 'Widget could not be added.'))
+          void onAddWidget(project.id, type, widgetPosition.current).catch(cause => setError(cause instanceof Error ? cause.message : t("Widget could not be added.")))
             .finally(() => { widgetPending.current = false; setWidgetAdding(false); });
         }} />
  </>} widgets={widgets} onPlacementHint={point => { widgetPosition.current = point; }} onUpdateWidget={onUpdateWidget}
@@ -168,9 +170,9 @@ export function ProjectPage({ theme, onToggleTheme, folders, workspaceItems, pro
       onResize={(id, width, height, minSize) => onResizeCanvasItem(project.id, id, width, height, minSize)}
       onMove={(id, x, y) => onMoveCanvasItem(project.id, id, x, y)} onOpenLink={link => {
       setError(null);
-      void browserTabsService.openLink(link.url).catch(cause => setError(cause instanceof Error ? cause.message : 'Website could not be opened.'));
-    }} /> : <div className="workspace-loading project-workspace-loading" role="status" aria-label="Preparing Project canvas" />}
-    {error && <p className="form-error" role="alert">{error}</p>}
+      void browserTabsService.openLink(link.url).catch(cause => setError(cause instanceof Error ? cause.message : t("Website could not be opened.")));
+    }} /> : <div className="workspace-loading project-workspace-loading" role="status" aria-label={t("Preparing Project canvas")} />}
+    {error && <p className="form-error" role="alert">{t(error)}</p>}
     {confirmDelete && <DeleteProjectDialog onCancel={() => setConfirmDelete(false)} onDelete={async () => { await onDelete(project.id); onBack(); }}
       onBusyChange={value => { setDeleting(value); onSavingChange(value); }} />}
   </main>;

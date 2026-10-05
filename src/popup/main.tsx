@@ -7,5 +7,5 @@ import '../App.css';
 import './popup.css';
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode><ApplicationErrorBoundary><QuickCapturePopup /></ApplicationErrorBoundary></StrictMode>,
+  <StrictMode><ApplicationErrorBoundary browserTheme><QuickCapturePopup /></ApplicationErrorBoundary></StrictMode>,
 );

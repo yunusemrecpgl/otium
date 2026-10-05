@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -5,6 +6,7 @@ import { X } from 'lucide-react';
 import { floatingBounds } from '../projects/floatingBounds';
 
 export function PageWatchSourcePanel({ open, onClose, getAnchor, children }: { open: boolean; onClose: () => void; getAnchor: () => DOMRect | undefined; children: ReactNode }) {
+  useLocale();
   const [placement, setPlacement] = useState({ top: 96, maxHeight: 500, right: 16, maxWidth: 540 });
   const anchor = useRef(getAnchor); anchor.current = getAnchor;
   useEffect(() => {
@@ -51,9 +53,9 @@ export function PageWatchSourcePanel({ open, onClose, getAnchor, children }: { o
     return () => document.removeEventListener('keydown', escape, true);
   }, [open, onClose]);
   return createPortal(<aside className="project-inspector page-watch-source-panel" hidden={!open}
-    style={placement} aria-label="Page Watch Source Configuration" onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
-    <header><span>Source Configuration</span>
-      <button ref={close} type="button" className="quiet-button" title="Close source configuration" aria-label="Close source configuration" onClick={onClose}><X size={16} aria-hidden="true" /></button>
+    style={placement} aria-label={t("Page Watch Source Configuration")} onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
+    <header><span>{t("Source Configuration")}</span>
+      <button ref={close} type="button" className="quiet-button" title={t("Close source configuration")} aria-label={t("Close source configuration")} onClick={onClose}><X size={16} aria-hidden="true" /></button>
     </header>
     <div className="floating-inspector-body project-inspector-properties">{children}</div>
   </aside>, document.querySelector('.otium-app') ?? document.body);

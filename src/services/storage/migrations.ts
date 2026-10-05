@@ -23,6 +23,7 @@ import { DEFAULT_SETTINGS, normalizeItemSize } from '../../domain/settings';
 import type { UserSettings } from '../../domain/settings';
 import { normalizeUrl } from '../../utils/url';
 import { preserveWidgetConfig } from '../widgetConfig';
+import { browserLocale, isLocale } from '../../i18n/locale';
 
 export const STORAGE_KEY = 'persistentData';
 export const SCHEMA_VERSION = 2;
@@ -39,11 +40,19 @@ function trashMetadata(value: Record<string, unknown>): { trashedAt?: number } {
 }
 
 export function parseSettings(value: unknown, oldTheme?: unknown): UserSettings {
-  const appearance = record(record(value)?.appearance);
+  const settings = record(value);
+  const appearance = record(settings?.appearance);
+  const capabilities = record(settings?.widgetCapabilities);
+  const widgetCapabilities = capabilities ? Object.fromEntries(Object.entries(capabilities).flatMap(([type, state]) => {
+    const entry = record(state);
+    return typeof entry?.enabled === 'boolean' ? [[type, { enabled: entry.enabled }]] : [];
+  })) : undefined;
   const size = appearance?.itemSize;
   const theme = appearance?.theme ?? oldTheme;
   return {
+    ...(widgetCapabilities ? { widgetCapabilities } : {}),
     appearance: {
+      language: isLocale(appearance?.language) ? appearance.language : browserLocale(),
       itemSize: normalizeItemSize(size),
       theme: theme === 'light' || theme === 'dark' || theme === 'system'
         ? theme : DEFAULT_SETTINGS.appearance.theme,
@@ -55,7 +64,7 @@ export function hasCanonicalStoredSettings(value: unknown, settings: UserSetting
   const storedSettings = record(record(value)?.settings);
   const appearance = record(storedSettings?.appearance);
   return appearance?.itemSize === settings.appearance.itemSize &&
-    appearance?.theme === settings.appearance.theme;
+    appearance?.theme === settings.appearance.theme && appearance?.language === settings.appearance.language;
 }
 
 function parseLinks(value: unknown): Link[] {

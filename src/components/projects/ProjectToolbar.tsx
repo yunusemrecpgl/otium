@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 
@@ -5,6 +6,7 @@ export function ProjectToolbar({ name, onRename, onBack, disabled, children, rig
   name: string; onRename: (name: string) => Promise<void>; onBack: () => void;
   disabled: boolean; children: ReactNode; rightActions: ReactNode;
 }) {
+  useLocale();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(name);
   const [error, setError] = useState<string | null>(null);
@@ -34,17 +36,17 @@ export function ProjectToolbar({ name, onRename, onBack, disabled, children, rig
     finally { pending.current = false; }
   }
   return <div className="project-toolbar">
-    <button type="button" className="text-button" onClick={onBack} disabled={disabled}>← Projects</button>
+    <button type="button" className="text-button" onClick={onBack} disabled={disabled}>{t("← Projects")}</button>
     <header className="project-page-heading">
       <div className="project-inline-name">
-        {editing ? <input spellCheck={false} ref={input} aria-label="Project name" value={draft} disabled={disabled} onChange={event => setDraft(event.target.value)}
+        {editing ? <input spellCheck={false} ref={input} aria-label={t("Project name")} value={draft} disabled={disabled} onChange={event => setDraft(event.target.value)}
           onBlur={() => { void commit(); }} onKeyDown={event => {
             if (event.key === 'Enter') { event.preventDefault(); void commit(); }
             if (event.key === 'Escape') { event.preventDefault(); editingRef.current = false; setEditing(false); setDraft(name); setError(null); }
-          }} /> : <h1><button type="button" disabled={disabled} title="Edit project name" onClick={() => {
+          }} /> : <h1><button type="button" disabled={disabled} title={t("Edit project name")} onClick={() => {
             setDraft(name); setError(null); editingRef.current = true; setEditing(true);
           }}>{name}</button></h1>}
-        {error && <span className="form-error" role="alert">{error}</span>}
+        {error && <span className="form-error" role="alert">{t(error)}</span>}
       </div>
       <div className="project-page-actions">{children}</div>
     </header>

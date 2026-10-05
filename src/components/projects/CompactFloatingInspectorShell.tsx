@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -7,6 +8,7 @@ import { clampFloating, floatingBounds } from './floatingBounds';
 export function CompactFloatingInspectorShell({ open, dragging, getWorkspace, getAnchor, children }: {
   open: boolean; dragging: boolean; getWorkspace: () => HTMLElement | null; getAnchor: () => DOMRect | undefined; children: ReactNode;
 }) {
+  useLocale();
   const [present, setPresent] = useState(open);
   const [shown, setShown] = useState(false);
   const [bounds, setBounds] = useState({ x: 8, y: 8 });
@@ -53,7 +55,7 @@ export function CompactFloatingInspectorShell({ open, dragging, getWorkspace, ge
   }, [present, open, getAnchor]);
   if (!present && !open) return null;
   return createPortal(<aside ref={panel} className="project-inspector floating-project-inspector note-floating-inspector compact-floating-inspector"
-    aria-label="Floating formatting tools" data-shown={shown || undefined} aria-hidden={!shown || dragging || !open} inert={!shown || dragging || !open}
+    aria-label={t("Floating formatting tools")} data-shown={shown || undefined} aria-hidden={!shown || dragging || !open} inert={!shown || dragging || !open}
     style={{ left: bounds.x, top: bounds.y, width: 'max-content' }}>
     <div className="floating-inspector-body">{open ? children : content.current}</div>
   </aside>, document.querySelector('.otium-app') ?? document.body);

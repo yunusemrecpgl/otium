@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useProjectQuickActions } from '../../hooks/useProjectQuickActions';
 import type { RegisterProjectQuickActions } from '../projects/ProjectContextToolbar';
 import { FormattingControls } from '../projects/NoteFormattingBar';
@@ -19,9 +20,10 @@ export default function FormulaWidget({ instance, disabled, onUpdate, inspectorT
   inspectorTarget?: HTMLElement | null;
   onQuickActions?: RegisterProjectQuickActions;
 }) {
+  useLocale();
   const { config, latest, error: saveError, flush, replace: edit } = useWidgetDraftPersistence<FormulaConfig>({
     value: isFormulaConfig(instance.config) ? instance.config : defaultFormulaConfig(),
-    save: config => onUpdate(instance.id, config), errorMessage: 'Formula could not be saved.',
+    save: config => onUpdate(instance.id, config), errorMessage: t("Formula could not be saved."),
   });
   const [numericDrafts, setNumericDrafts] = useState<Record<string, string>>({});
   const expressionEditor = useRef<HTMLInputElement | null>(null);
@@ -56,9 +58,9 @@ export default function FormulaWidget({ instance, disabled, onUpdate, inspectorT
         {config.variables.map((variable, index) => <div className="formula-variable" key={variable.id}>
           {inspector && <button type="button" className="quiet-button formula-insert-variable" title={'Insert ' + variable.name} aria-label={'Insert ' + variable.name}
             disabled={disabled || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable.name)} onClick={() => insertExpression(variable.name)}>↗</button>}
-          <input spellCheck={false} aria-label={`Variable ${index + 1} name`} style={inspector ? undefined : contentTypography} title={variable.name} value={variable.name} disabled={disabled}
+          <input spellCheck={false} aria-label={t("Variable {0} name", { 0: index + 1 })} style={inspector ? undefined : contentTypography} title={variable.name} value={variable.name} disabled={disabled}
             onBlur={flush} onChange={event => editVariable(variable.id, { name: event.target.value })} />
-          <input spellCheck={false} type="text" inputMode="decimal" aria-label={`Variable ${index + 1} value`} style={inspector ? undefined : contentTypography} disabled={disabled}
+          <input spellCheck={false} type="text" inputMode="decimal" aria-label={t("Variable {0} value", { 0: index + 1 })} style={inspector ? undefined : contentTypography} disabled={disabled}
             value={numericDrafts[variable.id] ?? String(variable.value)} onChange={event => {
               const draft = event.target.value;
               setNumericDrafts(previous => ({ ...previous, [variable.id]: draft }));
@@ -66,7 +68,7 @@ export default function FormulaWidget({ instance, disabled, onUpdate, inspectorT
                 editVariable(variable.id, { value: Number(draft) });
               }
             }} onBlur={flush} />
-          <button type="button" className="compare-remove" aria-label={`Remove variable ${index + 1}`} disabled={disabled} onClick={() => {
+          <button type="button" className="compare-remove" aria-label={t("Remove variable {0}", { 0: index + 1 })} disabled={disabled} onClick={() => {
             setNumericDrafts(previous => { const next = { ...previous }; delete next[variable.id]; return next; });
             edit({ ...latest.current, variables: latest.current.variables.filter(entry => entry.id !== variable.id) });
           }}><X size={12} aria-hidden="true" /></button>
@@ -77,43 +79,42 @@ export default function FormulaWidget({ instance, disabled, onUpdate, inspectorT
         let index = latest.current.variables.length + 1;
         while (names.has(`variable${index}`)) index++;
         edit({ ...latest.current, variables: [...latest.current.variables, { id: crypto.randomUUID(), name: `variable${index}`, value: 0 }] });
-      }}>+ Variable</button>
+      }}>{t("+ Variable")}</button>
 </>;
   useProjectQuickActions(instance.id, onQuickActions, { snapshot: () => latest.current });
   return <div className="note-widget formula-widget" style={widgetSurface(appearance)}>
     <header className="note-widget-header">
       <Calculator size={16} style={{ width: 16, height: 16 }} aria-hidden="true" />
-      <input spellCheck={false} aria-label="Formula title" value={config.title} style={widgetTextColor(appearance)} disabled={disabled} onBlur={flush}
+      <input spellCheck={false} aria-label={t("Formula title")} value={config.title} style={widgetTextColor(appearance)} disabled={disabled} onBlur={flush}
         onChange={event => edit({ ...latest.current, title: event.target.value })} />
     </header>
     <div className="formula-body">
-      <input spellCheck={false} className="formula-expression" style={contentTypography} aria-label="Arithmetic expression" placeholder="price * quantity" value={config.expression}
+      <input spellCheck={false} className="formula-expression" style={contentTypography} aria-label={t("Arithmetic expression")} placeholder="price * quantity" value={config.expression}
         disabled={disabled} onBlur={flush} onChange={event => edit({ ...latest.current, expression: event.target.value })} />
       {variableEditors()}
       <div className="formula-result" style={contentTypography} aria-live="polite">
-        <span className="muted" style={{ ...contentTypography, opacity: .7 }}>Result</span>
-        {error ? <p className="muted" role="status">{error}</p> : <output title={result ?? ''} style={{ ...contentTypography, fontSize: Math.round(fontSizePixels(appearance.fontSize, 16)! * 1.375), fontWeight: 600 }}>{result}</output>}
+        <span className="muted" style={{ ...contentTypography, opacity: .7 }}>{t("Result")}</span>
+        {error ? <p className="muted" role="status">{t(error)}</p> : <output title={result ?? ''} style={{ ...contentTypography, fontSize: Math.round(fontSizePixels(appearance.fontSize, 16)! * 1.375), fontWeight: 600 }}>{result}</output>}
       </div>
       <WidgetInspectorPortal target={inspectorTarget}>
         <div className="clip-format-cluster formula-format-cluster">
-          <div className="formula-builder" role="group" aria-label="Formula Builder">
-            <span className="muted">Formula Builder</span>
+          <div className="formula-builder" role="group" aria-label={t("Formula Builder")}>
+            <span className="muted">{t("Formula Builder")}</span>
             {['sqrt', 'pow', 'log', 'mod'].map(name => <button key={name} type="button" className="quiet-button" title={'Insert ' + name} disabled={disabled}
               onClick={() => insertExpression(name + (name === 'pow' || name === 'mod' ? '(, )' : '()'), name.length + 1)}>{name}()</button>)}
           </div>
-          <label className="clip-format-source">Expression
-            <input ref={expressionEditor} spellCheck={false} aria-label="Formula expression" value={config.expression} disabled={disabled}
+          <label className="clip-format-source">{t("Expression")}<input ref={expressionEditor} spellCheck={false} aria-label={t("Formula expression")} value={config.expression} disabled={disabled}
               onBlur={flush} onChange={event => edit({ ...latest.current, expression: event.target.value })} />
           </label>
-          <div className="formula-inspector-variables" role="group" aria-label="Variables">
-            <span className="muted">Variables</span>
+          <div className="formula-inspector-variables" role="group" aria-label={t("Variables")}>
+            <span className="muted">{t("Variables")}</span>
             {variableEditors(true)}
           </div>
           <FormattingControls name="Formula" basic style={appearance} disabled={disabled} error={!!saveError}
             onStyle={patch => edit({ ...latest.current, style: normalizeTextStyle({ ...latest.current.style, ...patch }) })} />
         </div>
       </WidgetInspectorPortal>
-      {saveError && <p className="form-error" role="alert">{saveError}</p>}
+      {saveError && <p className="form-error" role="alert">{t(saveError)}</p>}
     </div>
   </div>;
 }

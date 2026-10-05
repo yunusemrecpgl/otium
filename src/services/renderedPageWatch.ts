@@ -2,6 +2,8 @@ import type { PageWatchRead } from './pageWatch';
 import { normalizeWatchedText } from '../domain/pageWatch';
 import { normalizeUrl } from '../utils/url';
 import { hasOriginAccess, OriginAccessRequiredError } from './externalSources';
+import { widgetCapabilityService } from './widgetCapabilities';
+import { BrowserCapabilityRequiredError } from './permissions';
 
 type SelectorResult = { text?: string; error?: 'invalid' | 'missing' | 'empty' | 'navigated' };
 interface RenderedPageApi {
@@ -15,6 +17,8 @@ interface RenderedPageApi {
 export async function readRenderedPageWatchFields(input: string, selectors: string[], signal: AbortSignal): Promise<PageWatchRead[]> {
   const url = normalizeUrl(input);
   if (!url) throw new Error('Enter a public HTTP/HTTPS page URL.');
+  if (!await widgetCapabilityService.hasModeAccess('page-watch', 'rendered'))
+    throw new BrowserCapabilityRequiredError(widgetCapabilityService.modeRequirements('page-watch', 'rendered'));
   const api = (globalThis as typeof globalThis & { chrome?: Partial<RenderedPageApi> }).chrome;
   if (!api?.tabs?.query || !api.scripting?.executeScript) throw new Error('Rendered mode requires the Otium browser extension.');
   if (!await hasOriginAccess(url)) throw new OriginAccessRequiredError(url);
@@ -49,6 +53,8 @@ export async function readRenderedPageWatchFields(input: string, selectors: stri
     results = result?.result;
   } catch (cause) {
     if (signal.aborted) throw new Error('Request cancelled or timed out.');
+    if (!await widgetCapabilityService.hasModeAccess('page-watch', 'rendered'))
+      throw new BrowserCapabilityRequiredError(widgetCapabilityService.modeRequirements('page-watch', 'rendered'));
     if (!await hasOriginAccess(url)) throw new OriginAccessRequiredError(url);
     if (cause instanceof Error && cause.message === 'Open this page in a browser tab to read rendered content.') throw cause;
     throw new Error('Rendered page is unavailable. Open the page and try Refresh.');

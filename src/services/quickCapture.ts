@@ -9,6 +9,8 @@ import { normalizeUrl } from '../utils/url';
 import { findInitialPosition, getWorkspaceItemDimensions, toSpatialItems, workspaceGeometryForViewport } from '../utils/workspace';
 import { GRID_SIZE, WORKSPACE_PADDING } from '../constants/grid';
 import type { PageSelection } from './selectedText';
+import { assertWidgetCreationAccess } from './widgetCapabilities';
+import { permissionService } from './permissions';
 import { addProjectWidget, updateProjectWidget } from './projectWidgets';
 import { nextProjectCanvasPosition } from './projectCanvas';
 
@@ -64,7 +66,9 @@ export const quickCaptureService = {
   addToHome: (page: CurrentPage) => dataRepository.mutate(data => capture(data, page, { containerId: 'home' })),
   addToFolder: (page: CurrentPage, containerId: string) => dataRepository.mutate(data => capture(data, page, { containerId })),
   addToProject: (page: CurrentPage, projectId: string) => dataRepository.mutate(data => capture(data, page, { projectId })),
-  addSelectionToProject: (selection: PageSelection, projectId: string) => dataRepository.mutate(data => {
+  addSelectionToProject: (selection: PageSelection, projectId: string) => dataRepository.mutate(async data => {
+    await assertWidgetCreationAccess(data, 'clip');
+    if (!await permissionService.hasCapabilities(['active-page-capture'])) throw new Error('Page capture access is required.');
     if (!selection.text.trim() || !normalizeUrl(selection.sourceUrl)) throw new Error('Selected text is unavailable.');
     const created = addProjectWidget(data, projectId, 'clip', nextProjectCanvasPosition(data, projectId));
     const widget = created.widgetInstances[created.widgetInstances.length - 1];

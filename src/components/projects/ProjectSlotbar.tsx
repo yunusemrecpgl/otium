@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useLayoutEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import type { Link } from '../../domain/link';
@@ -18,6 +19,7 @@ interface ProjectSlotbarProps {
 }
 
 export function ProjectSlotbar({ linkIds, links, onRemove, disabled, zoneRef, drag, getDragHandlers, onScroll, zoneHandlers }: ProjectSlotbarProps) {
+  useLocale();
   const byId = new Map(links.map((link) => [link.id, link]));
   const listRef = useRef<HTMLOListElement>(null);
   const positions = useRef(new Map<string, number>());
@@ -77,20 +79,20 @@ export function ProjectSlotbar({ linkIds, links, onRemove, disabled, zoneRef, dr
     if (!removedFromFlow) visibleIndex++;
     return [...before, (
       <li key={id} data-sortable-id={id} className={`slotbar-link${removedFromFlow ? ' sortable-source-hidden' : ''}`}>
-        <button type="button" className="slotbar-handle" aria-label={`Drag ${link.title} to reorder`} title={link.title} disabled={disabled} {...getDragHandlers(id)}>
+        <button type="button" className="slotbar-handle" aria-label={t("Drag {0} to reorder", { 0: link.title })} title={link.title} disabled={disabled} {...getDragHandlers(id)}>
           <LinkFavicon key={link.url} title={link.title} url={link.url} />
           <span className="slotbar-title">{link.title}</span>
         </button>
-        <button type="button" className="slotbar-remove" aria-label={`Remove ${link.title} from project`} title="Remove link" onClick={() => onRemove(id)} disabled={disabled || !!drag}>×</button>
+        <button type="button" className="slotbar-remove" aria-label={t("Remove {0} from project", { 0: link.title })} title={t("Remove link")} onClick={() => onRemove(id)} disabled={disabled || !!drag}>×</button>
       </li>
     )];
   });
   if (insertionIndex === visibleIndex) nodes.push(placeholder());
 
   return (
-    <section ref={zoneRef} className={`project-slotbar${insertionIndex !== null ? ' is-drop-active' : ''}`} aria-label="Selected project links" onScroll={onScroll} {...zoneHandlers}>
+    <section ref={zoneRef} className={`project-slotbar${insertionIndex !== null ? ' is-drop-active' : ''}`} aria-label={t("Selected project links")} onScroll={onScroll} {...zoneHandlers}>
       <ol ref={listRef} className="slotbar-items" data-sortable-list>{nodes}</ol>
-      {linkIds.length === 0 && insertionIndex === null && <p className="slotbar-empty">Choose links below to build your project</p>}
+      {linkIds.length === 0 && insertionIndex === null && <p className="slotbar-empty">{t("Choose links below to build your project")}</p>}
     </section>
   );
 }

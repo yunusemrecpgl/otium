@@ -1,8 +1,9 @@
+import { t, useLocale, getLocale } from "../../i18n";
 import { useProjectQuickActions } from '../../hooks/useProjectQuickActions';
 import type { RegisterProjectQuickActions } from '../projects/ProjectContextToolbar';
 import { WidgetInspectorPortal } from '../projects/WidgetInspectorPortal';
 import { InspectorSegments } from '../projects/InspectorControls';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useWidgetDraftPersistence } from '../../hooks/useWidgetDraftPersistence';
 import { Eye, X, PlugZap } from 'lucide-react';
 import type { WidgetInstance } from '../../domain/widget';
@@ -24,17 +25,22 @@ import { useStaticFavicon } from '../../hooks/useStaticFavicon';
 import { normalizeTextStyle } from '../../domain/text';
 import { widgetSurface, widgetContentScale, widgetTypography, widgetTextColor } from './widgetAppearance';
 import { fontSizePixels } from '../../domain/typography';
+import { browserCapabilities, BrowserCapabilityRequiredError } from '../../services/permissions';
+import { widgetCapabilityService } from '../../services/widgetCapabilities';
 
 const DEFAULT_CONFIG: PageWatchConfig = { title: 'Page Watch', url: '', selector: '', refreshMinutes: 30, mode: 'static' };
+const renderedAccessError = new BrowserCapabilityRequiredError(widgetCapabilityService.modeRequirements('page-watch', 'rendered'));
 
 export default function PageWatchWidget({ instance, disabled, onUpdate, inspectorTarget, onQuickActions }: {
   instance: WidgetInstance; disabled: boolean; onUpdate: (id: string, config: PageWatchConfig) => Promise<void>;
   inspectorTarget?: HTMLElement | null;
   onQuickActions?: RegisterProjectQuickActions;
 }) {
+  useLocale();
+  const browserAccess = useSyncExternalStore(browserCapabilities.subscribe, browserCapabilities.getSnapshot);
   const committed = migratePageWatchConfig(isPageWatchConfig(instance.config) ? instance.config : DEFAULT_CONFIG);
   const { config, latest, error: saveError, flush, replace } = useWidgetDraftPersistence<PageWatchConfig>({
-    value: committed, save: config => onUpdate(instance.id, config), errorMessage: 'Page Watch could not be saved.',
+    value: committed, save: config => onUpdate(instance.id, config), errorMessage: t("Page Watch could not be saved."),
   });
   const [sourcePanelOpen, setSourcePanelOpen] = useState(false);
   const sourceConfigButton = useRef<HTMLButtonElement>(null);
@@ -69,6 +75,11 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
   function editField(id: string, patch: Partial<PageWatchField>) {
     edit({ fields: pageWatchFields(latest.current).map(field => field.id === id ? { ...field, ...patch } : field) });
   }
+  function selectMode(mode: 'static' | 'rendered' | 'direct') {
+    setMode(mode);
+    if (mode === 'rendered' && !browserAccess.scripting)
+      setFetchError(new BrowserCapabilityRequiredError(widgetCapabilityService.modeRequirements('page-watch', mode)));
+  }
   function renameField(id: string, label: string) {
     editField(id, { label });
     void flush();
@@ -92,6 +103,7 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
   useEffect(() => {
     let active = true, accessRetry = false;
     let controller: AbortController | null = null;
+    if (mode === 'rendered') cache.current = null;
     if (cache.current?.key !== sourceKey) { setChanged(new Set()); setFieldErrors({}); setFetchError(null); cache.current = null; }
     setLoading(false);
     if (!endpoint) {
@@ -150,7 +162,7 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
       if (controller) { cache.current = null; controller.abort(); }
       document.removeEventListener('visibilitychange', visible); refresh.current = () => {};
     };
-  }, [endpoint, interval, sourceKey, sourceUrl]);
+  }, [endpoint, interval, sourceKey, sourceUrl, browserAccess.scripting]);
 
   async function open() {
     if (!sourceUrl) return;
@@ -158,7 +170,7 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
   }
   useProjectQuickActions(instance.id, onQuickActions, { snapshot: () => latest.current,
     refresh: { run: () => refresh.current(true), disabled: disabled || loading || !endpoint },
-    open: { run: open, disabled: disabled || !sourceUrl, label: 'Open' } });
+    open: { run: open, disabled: disabled || !sourceUrl, label: "Open" } });
   const fields = pageWatchFields(config);
   const hero = fields.length === 1 ? fields[0] : undefined;
   const appearance = normalizeTextStyle(config.style);
@@ -187,7 +199,7 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
     <header className="note-widget-header"><Eye size={16} style={{ width: 16, height: 16 }} aria-hidden="true" />
       {hero ? <WebDataFieldLabel key={hero.id} label={hero.label || config.title || 'Page Watch'} disabled={disabled}
         style={labelStyle} onCommit={label => renameField(hero.id, label)} /> :
-        <input spellCheck={false} aria-label="Page Watch title" title={config.title} value={config.title} disabled={disabled} onBlur={flush}
+        <input spellCheck={false} aria-label={t("Page Watch title")} title={config.title} value={config.title} disabled={disabled} onBlur={flush}
           style={widgetTextColor(appearance)} onChange={event => edit({ title: event.target.value })} />}
     </header>
     <div className="web-data-output page-watch-monitor" aria-live="polite">
@@ -201,14 +213,14 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
           <WatchChange field={field} compact />
         </div>)}
       </div>}
-      {loading && <span className="muted page-watch-monitor-status">Checking…</span>}
-      {compactError && <span className="muted page-watch-monitor-status" title={fetchError?.message ?? Object.values(fieldErrors).join('; ')}>{compactError}</span>}
+      {loading && <span className="muted page-watch-monitor-status">{t("Checking…")}</span>}
+      {compactError && <span className="muted page-watch-monitor-status" title={fetchError?.message ?? Object.values(fieldErrors).join('; ')}>{t(compactError)}</span>}
     </div>
     <div className="resource-footer web-data-footer page-watch-footer">
-      <button type="button" className="quiet-button" disabled={disabled || loading || !endpoint} onClick={() => refresh.current(true)}>Refresh</button>
+      <button type="button" className="quiet-button" disabled={disabled || loading || !endpoint} onClick={() => refresh.current(true)}>{t("Refresh")}</button>
       <div className="web-data-metadata">
-        <span>Every {config.refreshMinutes} min</span>
-        <span>{config.lastCheckedAt !== undefined ? 'Checked ' + new Date(config.lastCheckedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not checked yet'}</span>
+        <span>{t("Every")} {config.refreshMinutes} {t("min")}</span>
+        <span>{config.lastCheckedAt !== undefined ? t('Checked {time}', { time: new Date(config.lastCheckedAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) }) : t("Not checked yet")}</span>
       </div>
       {hostname && <span className="web-data-source-mark" aria-hidden="true">
         {favicon && failedFavicon !== favicon ? <img src={favicon} alt="" onError={() => setFailedFavicon(favicon)} /> : hostname.replace(/^www\./i, '').charAt(0).toUpperCase()}
@@ -217,13 +229,11 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
     <WidgetInspectorPortal target={inspectorTarget}>
       <div className="clip-format-cluster page-watch-format-cluster">
         <div className="clip-format-source web-data-source-row">
-          <label className="web-data-refresh-control" title="Refresh interval in minutes">Every
-            <input spellCheck={false} type="number" min={5} step={1} aria-label="Refresh interval in minutes" value={config.refreshMinutes} disabled={disabled}
-              onBlur={flush} onChange={event => edit({ refreshMinutes: Number.isFinite(event.target.valueAsNumber) ? Math.max(5, Math.round(event.target.valueAsNumber)) : 5 })} /> min
-          </label>
-          <span className="page-watch-source-caption">Source URL</span>
-          <input spellCheck={false} type="url" aria-label="Source URL" value={config.url} disabled={disabled} onBlur={flush} onChange={event => edit({ url: event.target.value })} />
-          <button ref={sourceConfigButton} type="button" className="quiet-button web-data-connect" title="Configure source" aria-label="Configure source" aria-expanded={sourcePanelOpen}
+          <label className="web-data-refresh-control" title={t("Refresh interval in minutes")}>{t("Every")}<input spellCheck={false} type="number" min={5} step={1} aria-label={t("Refresh interval in minutes")} value={config.refreshMinutes} disabled={disabled}
+              onBlur={flush} onChange={event => edit({ refreshMinutes: Number.isFinite(event.target.valueAsNumber) ? Math.max(5, Math.round(event.target.valueAsNumber)) : 5 })} />{t("min")}</label>
+          <span className="page-watch-source-caption">{t("Source URL")}</span>
+          <input spellCheck={false} type="url" aria-label={t("Source URL")} value={config.url} disabled={disabled} onBlur={flush} onChange={event => edit({ url: event.target.value })} />
+          <button ref={sourceConfigButton} type="button" className="quiet-button web-data-connect" title={t("Configure source")} aria-label={t("Configure source")} aria-expanded={sourcePanelOpen}
             disabled={disabled} onClick={() => setSourcePanelOpen(true)}><PlugZap size={16} aria-hidden="true" /></button>
         </div>
         <FormattingControls name="Page Watch" style={appearance} disabled={disabled} error={!!saveError}
@@ -232,38 +242,39 @@ export default function PageWatchWidget({ instance, disabled, onUpdate, inspecto
     </WidgetInspectorPortal>
     <PageWatchSourcePanel getAnchor={() => sourceConfigButton.current?.closest('.compact-floating-inspector')?.getBoundingClientRect()} open={sourcePanelOpen && !!inspectorTarget} onClose={() => { void flush(); setSourcePanelOpen(false); sourceConfigButton.current?.focus(); }}>
         <div className="page-watch-format-source-controls">
-          <InspectorSegments label="Source mode" value={uiMode} disabled={disabled} options={[{ value: 'static', label: 'Static' }, { value: 'rendered', label: 'Rendered' }, { value: 'direct', label: 'Direct' }]} onChange={mode => setMode(mode)} />
+          <InspectorSegments label={t("Source mode")} value={uiMode} disabled={disabled} options={[{ value: 'static', label: t("Static") }, { value: 'rendered', label: t("Rendered") }, { value: 'direct', label: t("Direct") }]} onChange={selectMode} />
         </div>
         <div className="page-watch-source-row">
           <PageWatchDiscovery compact url={config.url} selector={fields.map(field => field.selector ?? field.selectorOrPath).join(' ')}
             currentValue={fields.find(field => field.currentValue !== undefined)?.currentValue} disabled={disabled}
             onUse={(url, path) => setMode('direct', url, path)} onAddPath={(url, path) => addField(path, url)} />
         </div>
-        {uiMode === 'direct' && <label className="clip-format-source">Direct URL
-          <input spellCheck={false} type="url" aria-label="Direct URL" value={config.directUrl ?? ''} disabled={disabled} onBlur={flush} onChange={event => edit({ directUrl: event.target.value })} />
+        {uiMode === 'direct' && <label className="clip-format-source">{t("Direct URL")}<input spellCheck={false} type="url" aria-label={t("Direct URL")} value={config.directUrl ?? ''} disabled={disabled} onBlur={flush} onChange={event => edit({ directUrl: event.target.value })} />
         </label>}
-        {uiMode === 'rendered' && <span className="muted page-watch-hint">Reads from an open rendered browser tab.</span>}
+        {uiMode === 'rendered' && <span className="muted page-watch-hint">{t("Reads from an open rendered browser tab.")}</span>}
+        {uiMode === 'rendered' && !browserAccess.scripting && <ExternalSourceError error={renderedAccessError} disabled={disabled}
+          onRetry={() => refresh.current(true)} />}
         <div className="page-watch-inspector-fields">
-          <span className="muted">Watched Fields · {uiMode === 'direct' ? 'JSON paths' : 'CSS selectors'}</span>
+          <span className="muted">{t("Watched Fields ·")} {uiMode === 'direct' ? t("JSON paths") : t("CSS selectors")}</span>
           <div className="page-watch-inspector-field-list">
             {fields.map((field, index) => <div className="page-watch-inspector-field" key={field.id}>
-              <span className="page-watch-inspector-label" title={field.label}>{field.label || 'Field ' + (index + 1)}</span>
-              <input spellCheck={false} aria-label={'Field ' + (index + 1) + (uiMode === 'direct' ? ' JSON path' : ' CSS selector')}
+              <span className="page-watch-inspector-label" title={field.label}>{field.label || t('Field') + ' ' + (index + 1)}</span>
+              <input spellCheck={false} aria-label={t('Field') + ' ' + (index + 1) + ' ' + t(uiMode === 'direct' ? 'JSON paths' : 'CSS selectors')}
                 value={field.selectorOrPath} disabled={disabled} placeholder={uiMode === 'direct' ? 'prices.0.price' : '.price'} onBlur={flush}
                 onChange={event => editField(field.id, { selectorOrPath: event.target.value, ...(uiMode === 'direct' ? { directPath: event.target.value } : { selector: event.target.value }) })} />
               <span className="muted page-watch-inspector-current" title={field.currentValue}>{uiMode === 'direct' ? previewJsonValue(field.currentValue ?? '—') : field.currentValue ?? '—'}</span>
-              <button type="button" className="quiet-button" title="Remove field" aria-label={'Remove field ' + (index + 1)} disabled={disabled || fields.length <= 1} onClick={() => removeField(field.id)}><X size={12} aria-hidden="true" /></button>
-              {fieldErrors[field.id] && <span className="muted page-watch-inspector-field-error">{fieldErrors[field.id]}</span>}
+              <button type="button" className="quiet-button" title={t("Remove field")} aria-label={t('Remove field') + ' ' + (index + 1)} disabled={disabled || fields.length <= 1} onClick={() => removeField(field.id)}><X size={12} aria-hidden="true" /></button>
+              {fieldErrors[field.id] && <span className="muted page-watch-inspector-field-error">{t(fieldErrors[field.id])}</span>}
             </div>)}
           </div>
-          <button type="button" className="text-button" disabled={disabled || fields.length >= 20} onClick={() => addField()}>+ Field</button>
+          <button type="button" className="text-button" disabled={disabled || fields.length >= 20} onClick={() => addField()}>{t("+ Field")}</button>
         </div>
         {uiMode === 'direct' && directResponse?.url === normalizeUrl(config.directUrl ?? '') && <ResponseExplorer response={directResponse.data}
           selectedPaths={fields.map(field => field.selectorOrPath)} maxFields={20} disabled={disabled} onToggle={toggleDirectPath} />}
-        {fetchError && <ExternalSourceError error={fetchError} disabled={disabled || loading} onRetry={() => refresh.current(true)} />}
-        <span className="muted page-watch-source-status">{loading ? 'Checking…' : config.lastCheckedAt !== undefined ? 'Last checked: ' + new Date(config.lastCheckedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not checked yet'}</span>
+        {fetchError && !(uiMode === 'rendered' && !browserAccess.scripting && fetchError instanceof BrowserCapabilityRequiredError) && <ExternalSourceError error={fetchError} disabled={disabled || loading} onRetry={() => refresh.current(true)} />}
+        <span className="muted page-watch-source-status">{loading ? t("Checking…") : config.lastCheckedAt !== undefined ? t('Last checked: {time}', { time: new Date(config.lastCheckedAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) }) : t("Not checked yet")}</span>
     </PageWatchSourcePanel>
-    {saveError && <span className="muted page-watch-monitor-status" title={saveError}>Changes could not be saved.</span>}
+    {saveError && <span className="muted page-watch-monitor-status" title={t(saveError)}>{t("Changes could not be saved.")}</span>}
   </div>;
 }
 
@@ -276,15 +287,17 @@ function numericValue(text: string | undefined): number | null {
   return Number.isFinite(number) && Math.abs(number) <= Number.MAX_SAFE_INTEGER ? number : null;
 }
 function WatchChange({ field, compact = false }: { field: PageWatchField; compact?: boolean }) {
+  useLocale();
   if (field.lastChangedAt === undefined) return compact ? <span className="page-watch-change-indicator muted">—</span> : null;
   const current = numericValue(field.currentValue), previous = numericValue(field.previousValue);
   const delta = current !== null && previous !== null ? current - previous : null;
-  const indicator = delta === null ? 'Changed' : delta > 0 ? '↑' : delta < 0 ? '↓' : '—';
+  const indicator = delta === null ? t('Changed') : delta > 0 ? '↑' : delta < 0 ? '↓' : '—';
   const minutes = Math.max(0, Math.floor((Date.now() - field.lastChangedAt) / 60000));
-  const time = minutes < 1 ? 'just now' : minutes < 60 ? minutes + ' min ago' : minutes < 1440 ? Math.floor(minutes / 60) + ' h ago' : Math.floor(minutes / 1440) + ' days ago';
-  const title = 'Previous: ' + (field.previousValue ?? '—') + ' · Changed ' + time;
+  const relative = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
+  const time = minutes < 60 ? relative.format(-minutes, 'minute') : minutes < 1440 ? relative.format(-Math.floor(minutes / 60), 'hour') : relative.format(-Math.floor(minutes / 1440), 'day');
+  const title = t('Previous: {value}', { value: field.previousValue ?? '—' }) + ' · ' + t('Changed: {time}', { time });
   return <span className="page-watch-change-indicator muted" title={title}>
-    {indicator}{!compact && delta !== null && delta !== 0 ? ' ' + new Intl.NumberFormat('en', { maximumFractionDigits: 6 }).format(Math.abs(delta)) : ''}
-    {!compact && <span className="page-watch-change-time">Changed {time}</span>}
+    {indicator}{!compact && delta !== null && delta !== 0 ? ' ' + new Intl.NumberFormat(getLocale(), { maximumFractionDigits: 6 }).format(Math.abs(delta)) : ''}
+    {!compact && <span className="page-watch-change-time">{t("Changed")} {time}</span>}
   </span>;
 }

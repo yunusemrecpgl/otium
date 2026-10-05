@@ -1,3 +1,4 @@
+import { t, useLocale, getLocale } from "../../i18n";
 import { useEffect, useRef, useState } from 'react';
 import { dataRepository } from '../../services/storage';
 import type { RecoveryStatus } from '../../services/storage/recovery';
@@ -9,6 +10,7 @@ interface DataRecoveryProps {
 }
 
 export function DataRecovery({ disabled = false, onRetry }: DataRecoveryProps) {
+  useLocale();
   const [status, setStatus] = useState<RecoveryStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,29 +33,30 @@ export function DataRecovery({ disabled = false, onRetry }: DataRecoveryProps) {
 
   return <div className="data-recovery">
     {status && <p className="muted">{status.available
-      ? `Recovery snapshot: ${new Date(status.createdAt!).toLocaleString()}`
-      : status.exists ? 'Stored recovery data is not a supported, valid restore snapshot.' : 'No recovery snapshot available yet.'}</p>}
+      ? t("Recovery snapshot: {0}", { 0: new Date(status.createdAt!).toLocaleString(getLocale()) })
+      : status.exists ? t("Stored recovery data is not a supported, valid restore snapshot.") : t("No recovery snapshot available yet.")}</p>}
     <div className="data-recovery-actions" aria-busy={busy}>
-      {onRetry ? <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => void perform(onRetry)}>Retry</button>
-        : <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => void perform(exportWorkspace)}>Export Workspace</button>}
-      <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => void perform(exportRecoveryData)}>Export Recovery Data</button>
+      {onRetry ? <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => void perform(onRetry)}>{t("Retry")}</button>
+        : <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => void perform(exportWorkspace)}>{t("Export Workspace")}</button>}
+      <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => void perform(exportRecoveryData)}>{t("Export Recovery Data")}</button>
       {status?.available && <button className="quiet-button" type="button" disabled={disabled || busy} onClick={() => {
-        if (!window.confirm(`Replace the current workspace with the recovery snapshot from ${new Date(status.createdAt!).toLocaleString()}? Current stored data will be preserved for recovery export.`)) return;
+        if (!window.confirm(t('Replace the current workspace with the recovery snapshot from {time}? Current stored data will be preserved for recovery export.', { time: new Date(status.createdAt!).toLocaleString(getLocale()) }))) return;
         void perform(async () => {
           await dataRepository.restoreRecovery(status.createdAt!);
           window.location.reload();
         });
-      }}>Restore Last Known Good</button>}
+      }}>{t("Restore Last Known Good")}</button>}
     </div>
-    {error && <p className="form-error" role="alert">{error}</p>}
+    {error && <p className="form-error" role="alert">{t(error)}</p>}
   </div>;
 }
 
 export function WorkspaceRecovery({ error, onRetry }: { error: string; onRetry: () => Promise<void> }) {
+  useLocale();
   return <main className="secondary-view settings-view">
-    <h1>Otium cannot load this workspace</h1>
-    <p>The original stored data is still available. Export it before making recovery changes.</p>
-    <p className="form-error" role="alert">{error}</p>
+    <h1>{t("Otium cannot load this workspace")}</h1>
+    <p>{t("The original stored data is still available. Export it before making recovery changes.")}</p>
+    <p className="form-error" role="alert">{t(error)}</p>
     <DataRecovery onRetry={onRetry} />
   </main>;
 }

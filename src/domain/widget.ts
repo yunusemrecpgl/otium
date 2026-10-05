@@ -1,4 +1,14 @@
 export type WidgetScope = 'project' | 'home';
+export type WidgetCapability = 'active-page-capture' | 'scripting' | 'favicon' | 'external-source';
+export interface WidgetCapabilityState { enabled: boolean }
+export interface WidgetCapabilityMetadata {
+  description: string;
+  requiredCapabilities: readonly WidgetCapability[];
+  optionalCapabilities: readonly WidgetCapability[];
+  defaultEnabled: boolean;
+  sourceAccess?: 'per-origin';
+  modeCapabilities?: Readonly<Record<string, readonly WidgetCapability[]>>;
+}
 
 export interface WidgetSize {
   width: number;
@@ -6,7 +16,7 @@ export interface WidgetSize {
 }
 
 // Definitions describe metadata only; implementations can be loaded separately.
-export interface WidgetDefinition {
+export interface WidgetDefinition extends Partial<WidgetCapabilityMetadata> {
   type: string;
   name: string;
   version: number;

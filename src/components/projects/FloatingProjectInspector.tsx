@@ -1,3 +1,4 @@
+import { t, useLocale } from '../../i18n';
 import { memo, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CompactFloatingInspectorShell } from './CompactFloatingInspectorShell';
@@ -11,6 +12,7 @@ const widths: Record<string, number> = { text: 320, resource: 320, clip: 420, no
 function FloatingConfigurationInspector({ getAnchor, ...props }: ProjectInspectorProps & {
   getAnchor: () => DOMRect | undefined;
 }) {
+  useLocale();
   const panel = useRef<HTMLElement>(null);
   const [position, setPosition] = useState<Position | null>(null);
   const manuallyMoved = useRef(false);
@@ -43,7 +45,7 @@ function FloatingConfigurationInspector({ getAnchor, ...props }: ProjectInspecto
     return () => window.removeEventListener('resize', resize);
   }, [width]);
   if (!name) return null;
-  return createPortal(<aside ref={panel} className="project-inspector floating-project-inspector" aria-label={`${name} properties`}
+  return createPortal(<aside ref={panel} className="project-inspector floating-project-inspector" aria-label={t("{name} properties", { name: t(name) })}
     style={{ width, left: position?.x ?? 8, top: position?.y ?? 8,
       maxHeight: `calc(100dvh - ${position?.y ?? 8}px - 8px)`, visibility: position ? undefined : 'hidden' }}>
     <header className="floating-inspector-handle"
@@ -66,7 +68,7 @@ function FloatingConfigurationInspector({ getAnchor, ...props }: ProjectInspecto
         if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
       }}
       onPointerCancel={() => { gesture.current = null; }} onLostPointerCapture={() => { gesture.current = null; }}>
-      {name}
+      {t(name)}
     </header>
     <div className="floating-inspector-body"><ProjectInspectorContent {...props} /></div>
   </aside>, document.querySelector('.otium-app') ?? document.body);

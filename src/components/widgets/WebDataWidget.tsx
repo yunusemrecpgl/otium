@@ -1,3 +1,4 @@
+import { t, useLocale, getLocale } from "../../i18n";
 import ExternalSourceError from './ExternalSourceError';
 import { OriginAccessRequiredError, requestOriginAccess, subscribeOriginAccessRemoved } from '../../services/externalSources';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,6 +29,7 @@ export default function WebDataWidget({ instance, disabled, onUpdate, onPreview,
   onStatus: (id: string, status: WebDataStatus | null) => void;
   inspectorTarget?: HTMLElement | null;
 }) {
+  useLocale();
   const committed = readWebDataConfig(storedConfig);
   const { config, latest, error: saveError, flush, edit } = useInspectorWidgetEditor(instance, readWebDataConfig, onUpdate, onPreview, sameConfig);
   const [result, setResult] = useState<{ values: Map<string, { value?: string; error?: string }>; updatedAt: number } | null>(null);
@@ -181,7 +183,7 @@ export default function WebDataWidget({ instance, disabled, onUpdate, onPreview,
       <Activity size={16} aria-hidden="true" />
       {hero ? <WebDataFieldLabel key={hero.id} label={hero.label} disabled={disabled}
         style={{ ...typography, textAlign: 'left' }} onCommit={label => renameField(hero.id, label)} /> :
-        <input spellCheck={false} aria-label="Web Data label" title={config.title} value={config.title} placeholder="Web Data"
+        <input spellCheck={false} aria-label={t("Web Data label")} title={config.title} value={config.title} placeholder={t("Web Data")}
           style={headerTypography} disabled={disabled} onBlur={flush}
           onChange={event => edit({ title: event.target.value })} />}
     </header>
@@ -201,14 +203,14 @@ export default function WebDataWidget({ instance, disabled, onUpdate, onPreview,
           </div>
         </div>)}
       </div>}
-      {loading && <span className="muted">Loading…</span>}
+      {loading && <span className="muted">{t("Loading…")}</span>}
       {fetchError && <ExternalSourceError key={endpoint} error={fetchError} disabled={disabled || loading} onRetry={() => connect(false)} />}
     </div>
     <div className="resource-footer web-data-footer">
-      <button type="button" className="quiet-button" disabled={disabled || loading || !endpoint} onClick={() => refresh.current(true)}>Refresh</button>
+      <button type="button" className="quiet-button" disabled={disabled || loading || !endpoint} onClick={() => refresh.current(true)}>{t("Refresh")}</button>
       <div className="web-data-metadata">
-        <span>Every {config.refreshMinutes} min</span>
-        <span>{result ? 'Updated ' + new Date(result.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Not updated yet'}</span>
+        <span>{t("Every")} {config.refreshMinutes} {t("min")}</span>
+        <span>{result ? t('Updated {time}', { time: new Date(result.updatedAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) }) : t("Not updated yet")}</span>
       </div>
       {hostname && <span className="web-data-source-mark" aria-hidden="true">
         {favicon && failedIcon !== favicon ? <img src={favicon} alt="" onError={() => setFailedIcon(favicon)} /> : hostname.replace(/^www\./i, '').charAt(0).toUpperCase()}
@@ -219,17 +221,15 @@ export default function WebDataWidget({ instance, disabled, onUpdate, onPreview,
         <div ref={sourceRow} className="web-data-source-cluster">
           {explorerOpen && <div className="web-data-explorer-panel">
             {response?.url === sourceUrl && <ResponseExplorer response={response.data} selectedPaths={fields.map(field => field.path)} onToggle={togglePath} disabled={disabled} />}
-            {loading && <span className="muted">Loading…</span>}
+            {loading && <span className="muted">{t("Loading…")}</span>}
             {fetchError && <ExternalSourceError error={fetchError} disabled={disabled || loading} onRetry={() => connect(false)} />}
           </div>}
           <div className="clip-format-source web-data-source-row">
-            <label className="web-data-refresh-control" title="Refresh interval in minutes">Every
-              <input spellCheck={false} type="number" min={1} step={1} aria-label="Refresh interval in minutes" value={config.refreshMinutes} disabled={disabled}
-                onBlur={flush} onChange={event => edit({ refreshMinutes: Number.isFinite(event.target.valueAsNumber) ? Math.max(1, Math.round(event.target.valueAsNumber)) : 1 })} /> min
-            </label>
-            <input spellCheck={false} type="url" aria-label="Source URL" placeholder="https://api.example.com/data" value={config.url}
+            <label className="web-data-refresh-control" title={t("Refresh interval in minutes")}>{t("Every")}<input spellCheck={false} type="number" min={1} step={1} aria-label={t("Refresh interval in minutes")} value={config.refreshMinutes} disabled={disabled}
+                onBlur={flush} onChange={event => edit({ refreshMinutes: Number.isFinite(event.target.valueAsNumber) ? Math.max(1, Math.round(event.target.valueAsNumber)) : 1 })} />{t("min")}</label>
+            <input spellCheck={false} type="url" aria-label={t("Source URL")} placeholder="https://api.example.com/data" value={config.url}
               disabled={disabled} onBlur={flush} onChange={event => { setExplorerOpen(false); edit({ url: event.target.value }); }} />
-            <button type="button" className="quiet-button web-data-connect" title="Connect" aria-label="Connect" disabled={disabled || loading} onClick={() => connect()}>
+            <button type="button" className="quiet-button web-data-connect" title={t("Connect")} aria-label={t("Connect")} disabled={disabled || loading} onClick={() => connect()}>
               <PlugZap size={16} aria-hidden="true" />
             </button>
           </div>
@@ -238,6 +238,6 @@ export default function WebDataWidget({ instance, disabled, onUpdate, onPreview,
           onStyle={patch => edit({ style: normalizeTextStyle({ ...latest.current.style, ...patch }) })} />
       </div>
     </WidgetInspectorPortal>
-    {saveError && <p className="form-error" role="alert">Web Data could not be saved.</p>}
+    {saveError && <p className="form-error" role="alert">{t("Web Data could not be saved.")}</p>}
   </div>;
 }

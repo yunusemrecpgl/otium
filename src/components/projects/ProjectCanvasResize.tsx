@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useRef, useState } from 'react';
 import type { ProjectCanvasItem } from '../../domain/projectCanvasItem';
 import type { ProjectCanvasCapabilities } from '../../domain/projectCanvasRenderer';
@@ -14,11 +15,12 @@ export function ProjectCanvasResize({ item, selected, capabilities, disabled, ge
   onResize: (id: string, width: number, height: number, minSize?: { width: number; height: number }) => Promise<void>;
   onError: (message: string | null) => void;
 }) {
+  useLocale();
   const gesture = useRef<{ pointerId: number; x: number; y: number; width: number; height: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const cancel = () => { gesture.current = null; onPreview(null); onInteraction(false); };
   if (!selected || !capabilities.resizable) return null;
-  return <button type="button" className="project-canvas-resize" aria-label="Resize canvas item" disabled={disabled || saving}
+  return <button type="button" className="project-canvas-resize" aria-label={t("Resize canvas item")} disabled={disabled || saving}
     onClick={event => { event.preventDefault(); event.stopPropagation(); }}
     onPointerDown={event => {
       event.stopPropagation(); event.preventDefault();

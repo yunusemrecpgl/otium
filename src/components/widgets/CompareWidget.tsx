@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useProjectQuickActions } from '../../hooks/useProjectQuickActions';
 import type { RegisterProjectQuickActions } from '../projects/ProjectContextToolbar';
 import { WidgetInspectorPortal } from '../projects/WidgetInspectorPortal';
@@ -18,9 +19,10 @@ export default function CompareWidget({ instance, disabled, onUpdate, inspectorT
   inspectorTarget?: HTMLElement | null;
   onQuickActions?: RegisterProjectQuickActions;
 }) {
+  useLocale();
   const { config, latest, error, flush, replace: edit } = useWidgetDraftPersistence<CompareConfig>({
     value: isCompareConfig(instance.config) ? instance.config : defaultCompareConfig(),
-    save: config => onUpdate(instance.id, config), errorMessage: 'Compare could not be saved.',
+    save: config => onUpdate(instance.id, config), errorMessage: t("Compare could not be saved."),
   });
   const editors = useRef(new Map<string, HTMLInputElement>());
   const pendingFocus = useRef<string | null>(null);
@@ -57,32 +59,32 @@ export default function CompareWidget({ instance, disabled, onUpdate, inspectorT
   return <div className="note-widget compare-widget" style={widgetSurface(appearance)}>
     <header className="note-widget-header" style={widgetContentScale(appearance)}>
       <Table2 size={16} aria-hidden="true" />
-      <input spellCheck={false} aria-label="Compare title" style={{ ...widgetContentScale(appearance), textAlign: 'left' }} value={config.title} disabled={disabled} onBlur={flush}
+      <input spellCheck={false} aria-label={t("Compare title")} style={{ ...widgetContentScale(appearance), textAlign: 'left' }} value={config.title} disabled={disabled} onBlur={flush}
         onChange={event => edit({ ...latest.current, title: event.target.value })} />
     </header>
     <div className="compare-table-scroll">
       <table className="compare-table" data-grid-mode={gridMode} aria-label={config.title || 'Comparison table'} style={{ minWidth: (config.columns.length + 1) * 120 }}>
         <thead><tr><th scope="col" />
           {config.columns.map((column, index) => <th scope="col" key={column.id}><div className="compare-cell-controls">
-            <input spellCheck={false} aria-label={`Column ${index + 1} title`} style={structural} value={column.title} disabled={disabled} onBlur={flush}
+            <input spellCheck={false} aria-label={t("Column {0} title", { 0: index + 1 })} style={structural} value={column.title} disabled={disabled} onBlur={flush}
               ref={element => { if (element) editors.current.set(column.id, element); else editors.current.delete(column.id); }}
               onChange={event => edit({ ...latest.current, columns: latest.current.columns.map(entry => entry.id === column.id ? { ...entry, title: event.target.value } : entry) })} />
-            <button type="button" className="compare-remove" aria-label={`Remove column ${index + 1}`} disabled={disabled || config.columns.length <= 1}
+            <button type="button" className="compare-remove" aria-label={t("Remove column {0}", { 0: index + 1 })} disabled={disabled || config.columns.length <= 1}
               onClick={() => removeColumn(column.id)}><X size={12} aria-hidden="true" /></button>
           </div></th>)}
         </tr></thead>
         <tbody>{config.rows.map((row, rowIndex) => <tr key={row.id}>
           <th scope="row"><div className="compare-cell-controls">
-            <input spellCheck={false} aria-label={`Row ${rowIndex + 1} label`} style={structural} value={row.label} disabled={disabled} onBlur={flush}
+            <input spellCheck={false} aria-label={t("Row {0} label", { 0: rowIndex + 1 })} style={structural} value={row.label} disabled={disabled} onBlur={flush}
               ref={element => { if (element) editors.current.set(row.id, element); else editors.current.delete(row.id); }}
               onChange={event => edit({ ...latest.current, rows: latest.current.rows.map(entry => entry.id === row.id ? { ...entry, label: event.target.value } : entry) })} />
-            <button type="button" className="compare-remove" aria-label={`Remove row ${rowIndex + 1}`} disabled={disabled || config.rows.length <= 1}
+            <button type="button" className="compare-remove" aria-label={t("Remove row {0}", { 0: rowIndex + 1 })} disabled={disabled || config.rows.length <= 1}
               onClick={() => { if (latest.current.rows.length > 1) edit({ ...latest.current, rows: latest.current.rows.filter(entry => entry.id !== row.id) }); }}>
               <X size={12} aria-hidden="true" />
             </button>
           </div></th>
           {config.columns.map((column, columnIndex) => <td key={column.id} style={{ textAlign: appearance.textAlign ?? 'left' }}>
-            <input spellCheck={false} aria-label={`Row ${rowIndex + 1}, column ${columnIndex + 1}`} style={content} value={row.values[column.id]} disabled={disabled} onBlur={flush}
+            <input spellCheck={false} aria-label={t("Row {0}, column {1}", { 0: rowIndex + 1, 1: columnIndex + 1 })} style={content} value={row.values[column.id]} disabled={disabled} onBlur={flush}
               onChange={event => edit({ ...latest.current, rows: latest.current.rows.map(entry => entry.id === row.id
                 ? { ...entry, values: { ...entry.values, [column.id]: event.target.value } } : entry) })} />
           </td>)}
@@ -90,18 +92,18 @@ export default function CompareWidget({ instance, disabled, onUpdate, inspectorT
       </table>
     </div>
     <div className="compare-actions">
-      <button type="button" className="text-button" disabled={disabled} onClick={addColumn}>+ Column</button>
-      <button type="button" className="text-button" disabled={disabled} onClick={addRow}>+ Row</button>
+      <button type="button" className="text-button" disabled={disabled} onClick={addColumn}>{t("+ Column")}</button>
+      <button type="button" className="text-button" disabled={disabled} onClick={addRow}>{t("+ Row")}</button>
     </div>
     <WidgetInspectorPortal target={inspectorTarget}>
-      <FormattingControls name="Compare" style={appearance} disabled={disabled} error={!!error} cycleAlignment
+      <FormattingControls name="Compare" style={appearance} disabled={disabled} error={!!error}
         onStyle={patch => edit({ ...latest.current, style: normalizeTextStyle({ ...latest.current.style, ...patch }) })}
         presentationControls={<button type="button" className="quiet-button" title={'Grid: ' + gridMode} aria-label={'Grid: ' + gridMode}
           disabled={disabled} onClick={() => edit({ ...latest.current, gridMode: gridModes[(gridModes.indexOf(gridMode) + 1) % gridModes.length] })}>
           <GridIcon size={16} aria-hidden="true" />
         </button>} />
     </WidgetInspectorPortal>
-    {error && <p className="form-error" role="alert">{error}</p>}
+    {error && <p className="form-error" role="alert">{t(error)}</p>}
   </div>;
 }
 

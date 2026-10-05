@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { previewJsonValue } from '../../services/webData';
 
 // Only paths supported by the existing dot-path resolver can be selected.
@@ -21,17 +22,18 @@ function leaves(value: unknown): { path: string; value: string }[] {
 export function ResponseExplorer({ response, selectedPaths, onToggle, disabled, maxFields = 8 }: {
   response: unknown; selectedPaths: string[]; onToggle: (path: string) => void; disabled?: boolean; maxFields?: number;
 }) {
+  useLocale();
   const rows = leaves(response);
-  return <div className="web-data-explorer" role="group" aria-label="Response Explorer">
-    <span className="muted">Response Explorer</span>
+  return <div className="web-data-explorer" role="group" aria-label={t("Response Explorer")}>
+    <span className="muted">{t("Response Explorer")}</span>
     <div className="web-data-explorer-rows">
-      {rows.map(row => <label key={row.path} className="web-data-leaf-row" data-selected={selectedPaths.includes(row.path) || undefined} title={row.path || 'Root value'}>
-        <input type="checkbox" aria-label={row.path || 'Root value'} checked={selectedPaths.includes(row.path)}
+      {rows.map(row => <label key={row.path} className="web-data-leaf-row" data-selected={selectedPaths.includes(row.path) || undefined} title={row.path || t('Root value')}>
+        <input type="checkbox" aria-label={row.path || t('Root value')} checked={selectedPaths.includes(row.path)}
           disabled={disabled || (!selectedPaths.includes(row.path) && selectedPaths.length >= maxFields)} onChange={() => onToggle(row.path)} />
-        <span>{row.path || 'Root value'}</span><span>{row.value}</span>
+        <span>{row.path || t('Root value')}</span><span>{row.value}</span>
       </label>)}
-      {selectedPaths.length >= maxFields && <span className="muted">Maximum {maxFields} fields selected.</span>}
-      {!rows.length && <span className="muted">No selectable values found.</span>}
+      {selectedPaths.length >= maxFields && <span className="muted">{t("Maximum")} {maxFields} {t("fields selected.")}</span>}
+      {!rows.length && <span className="muted">{t("No selectable values found.")}</span>}
     </div>
   </div>;
 }

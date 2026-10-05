@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import type { Theme } from '../domain/settings';
 
 interface ThemeToggleProps {
@@ -6,11 +7,12 @@ interface ThemeToggleProps {
 }
 
 export function ThemeToggle({ theme, onToggle }: ThemeToggleProps) {
+  useLocale();
   return (
     <button
       type="button"
       className="workspace-control theme-toggle"
-      aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
+      aria-label={theme === 'light' ? t("Switch to dark theme") : t("Switch to light theme")}
       onClick={onToggle}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">

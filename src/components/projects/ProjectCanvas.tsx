@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import type { ReactNode } from 'react';
 import { Trash2 } from 'lucide-react';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,6 +54,7 @@ const CanvasLink = memo(function CanvasLink({ item, link, disabled, onOpenLink, 
   singleSelected: boolean;
   capabilities: ProjectCanvasCapabilities;
 } & Pick<Props, 'disabled' | 'onOpenLink' | 'onResize' | 'onError'>) {
+  useLocale();
   const [sizePreview, setSizePreview] = useState<{ width: number; height: number } | null>(null);
   const interaction = useCallback((active: boolean) => onDragging(item.id, active), [item.id, onDragging]);
   const size = sizePreview ?? item;
@@ -75,6 +77,7 @@ interface ProjectCamera {
 }
 
 export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdateWidget, onTrash, onDuplicate, onPlacementHint, state, onZoom, ...actions }: Props) {
+  useLocale();
   const viewport = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [interactionIds, setInteractionIds] = useState<Set<string>>(new Set());
@@ -403,7 +406,7 @@ export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdat
   const selectedLink = inspectedItem?.type === 'link' ? linksById.get(inspectedItem.referenceId) : undefined;
   const contextSupported = !!selectedLink || !!(inspectedWidget && WidgetRegistry.get(inspectedWidget.type));
   const quickActions: ProjectQuickActions | undefined = selectedLink
-    ? { open: { label: 'Open', disabled: actions.disabled, run: () => actions.onOpenLink(selectedLink) } }
+    ? { open: { label: "Open", disabled: actions.disabled, run: () => actions.onOpenLink(selectedLink) } }
     : inspectedWidget?.type === 'web-data' ? { refresh: {
       disabled: !webDataStatus.get(inspectedWidget.id)?.available || !!webDataStatus.get(inspectedWidget.id)?.loading,
       run: () => webDataStatus.get(inspectedWidget.id)?.refresh(),
@@ -422,7 +425,7 @@ export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdat
     finally { quickPending.current = false; setQuickBusy(false); }
   }
   return <div className="project-workspace">
-    <section className="project-canvas" aria-label="Project canvas">
+    <section className="project-canvas" aria-label={t("Project canvas")}>
     <div ref={viewport} className="project-canvas-viewport" data-pan-cursor={panning ? 'grabbing' : undefined}
       style={{ backgroundSize: `${20 * camera.zoom}px ${20 * camera.zoom}px`, backgroundPosition: `${camera.offsetX}px ${camera.offsetY}px`,
         backgroundImage: `radial-gradient(circle, var(--color-grid-dot) ${camera.zoom}px, transparent ${camera.zoom}px)` }}
@@ -524,7 +527,7 @@ export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdat
               setPositions(new Map(resolveProjectCanvasGroupPositions(drag.items, drag.anchorId, dx, dy, activeItems).map(position => [position.id, position])));
             } catch (cause) {
               cancelSelectionGesture();
-              actions.onError(cause instanceof Error ? cause.message : 'A safe canvas position could not be found.');
+              actions.onError(cause instanceof Error ? cause.message : t("A safe canvas position could not be found."));
               return;
             }
             setMoveSaving(true); actions.onError(null);
@@ -592,7 +595,7 @@ export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdat
           inspectorTarget={selectedIds.size === 1 && selectedIds.has(item.id) ? inspectorTarget : null} appearanceTarget={selectedIds.size === 1 && selectedIds.has(item.id) ? appearanceTarget : null} onQuickActions={registerQuickActions} />)}
         {selectionRect && <div className="project-canvas-marquee" style={{ left: selectionRect.x, top: selectionRect.y,
           width: selectionRect.width, height: selectionRect.height }} />}
-        {!links.length && !widgetNodes.length && <p className="muted project-canvas-empty">No websites yet.</p>}
+        {!links.length && !widgetNodes.length && <p className="muted project-canvas-empty">{t("No websites yet.")}</p>}
       </div>
     </div>
     <div className="project-canvas-overlay">{overlay}</div>
@@ -604,14 +607,14 @@ export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdat
       data-active={trashState === 'active' && trashOver || undefined} aria-hidden={trashState === 'hidden'}
       onTransitionEnd={event => {
         if (event.target === event.currentTarget && event.propertyName === 'opacity') activateVisibleTrash();
-      }}><div className="project-canvas-trash-surface"><Trash2 size={20} aria-hidden="true" /><span>Trash</span></div></div>
-    <div className="project-canvas-controls" role="group" aria-label="Canvas zoom">
-      <button type="button" className="quiet-button" aria-label="Zoom out" disabled={controlsDisabled || index === 0}
+      }}><div className="project-canvas-trash-surface"><Trash2 size={20} aria-hidden="true" /><span>{t("Trash")}</span></div></div>
+    <div className="project-canvas-controls" role="group" aria-label={t("Canvas zoom")}>
+      <button type="button" className="quiet-button" aria-label={t("Zoom out")} disabled={controlsDisabled || index === 0}
         onClick={() => changeZoom(PROJECT_CANVAS_ZOOM_LEVELS[index - 1])}>−</button>
       <span aria-live="polite">{Math.round(zoomLevel * 100)}%</span>
-      <button type="button" className="quiet-button" aria-label="Zoom in" disabled={controlsDisabled || index === PROJECT_CANVAS_ZOOM_LEVELS.length - 1}
+      <button type="button" className="quiet-button" aria-label={t("Zoom in")} disabled={controlsDisabled || index === PROJECT_CANVAS_ZOOM_LEVELS.length - 1}
         onClick={() => changeZoom(PROJECT_CANVAS_ZOOM_LEVELS[index + 1])}>+</button>
-      <button type="button" className="quiet-button" disabled={controlsDisabled} onClick={fit}>Fit</button>
+      <button type="button" className="quiet-button" disabled={controlsDisabled} onClick={fit}>{t("Fit")}</button>
     </div>
     </section>
     <FloatingProjectInspector getWorkspace={getWorkspace} dragging={dragging} getAnchor={getInspectorAnchor}
