@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Otium",
+  "description": "A minimal personal workspace for your new tab.",
+  "version": "0.1.0",
+
+  "chrome_url_overrides": {
+    "newtab": "index.html"
+  }
+}
