@@ -1,0 +1,5 @@
+:root { color-scheme: light; background: #fafafa; }
+:root[data-theme='dark'] { color-scheme: dark; background: #191919; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { color-scheme: dark; background: #191919; }
+}

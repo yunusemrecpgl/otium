@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Otium Project Home fixture</title></head>
+<body>
+  <div id="root"></div>
+  <output id="opened-tabs" hidden></output>
+  <script>
+    // Development-only session fixture: reload survives, production never loads it.
+    const compact = new URLSearchParams(location.search).has('compact');
+    const key = 'otium-project-home-fixture' + (compact ? '-compact' : '');
+    const resources = [
+      ['github', 'GitHub', 'https://github.com/'],
+      ['wiki', 'Wikipedia', 'https://wikipedia.org/'],
+      ['docs', 'Documentation', 'https://example.com/'],
+      ['private1', 'Design', 'https://figma.com/'],
+      ['private2', 'Tasks', 'https://trello.com/'],
+      ['private3', 'Research', 'https://developer.chrome.com/']
+    ].map(([id, title, url], index) => ({ id, title, url, createdAt: index + 1, ...(index > 2 ? { projectId: 'research' } : {}) }));
+    const fixtureData = JSON.parse(sessionStorage.getItem(key) || 'null') || {
+      persistentData: {
+        schemaVersion: 2, links: resources,
+        projects: [
+          { id: 'research', name: 'canmet.02', linkIds: ['docs', 'github', 'private1', 'wiki', 'private2', 'private3', 'missing'], createdAt: 1, updatedAt: 1 },
+          { id: 'empty', name: 'Quiet space', linkIds: [], createdAt: 2, updatedAt: 2 }
+        ],
+        workspaceItems: [
+          { id: 'github-home', type: 'link', linkId: 'github', x: 4, y: 0 },
+          { id: 'wiki-home', type: 'link', linkId: 'wiki', x: 8, y: 0 },
+          { id: 'docs-home', type: 'link', linkId: 'docs', x: 4, y: 4 },
+          { id: 'orphan-home', type: 'project', projectId: 'gone', x: 30, y: 20 }
+        ],
+        settings: { appearance: { itemSize: 82, theme: 'light' } }
+      }
+    };
+    if (compact && !sessionStorage.getItem(key)) {
+      fixtureData.persistentData.projects.push(
+        {id:'short',name:'CRM',linkIds:['github'],createdAt:3,updatedAt:3},
+        {id:'long',name:'Canmet Website Redesign and Marketing',linkIds:['github','wiki','docs'],createdAt:4,updatedAt:4}
+      );
+      fixtureData.persistentData.workspaceItems = fixtureData.persistentData.workspaceItems.filter(item=>item.id!=='orphan-home');
+    }
+    window.chrome ??= {};
+    window.chrome.storage = { local: {
+      async get(keys) { return structuredClone(Object.fromEntries(keys.map(key => [key, fixtureData[key]]))); },
+      async set(update) { Object.assign(fixtureData, structuredClone(update)); sessionStorage.setItem(key, JSON.stringify(fixtureData)); }
+    }};
+    window.chrome.tabs = { async create(options) {
+      const output = document.getElementById('opened-tabs');
+      const opened = JSON.parse(output.textContent || '[]');
+      opened.push(options); output.textContent = JSON.stringify(opened);
+    }};
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

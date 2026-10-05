@@ -1,32 +1,30 @@
-# React + TypeScript + Vite
+# Otium
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Otium is a local-first browser workspace and new-tab extension for Chromium browsers, including Chrome and Brave. Built with React, TypeScript and Vite, it uses Manifest V3.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Spatial Home and Folder workspaces for links and Projects.
+- Project canvases with pan/zoom, selection, drag, resize and formatting tools.
+- Note, Todo, Text / Label, Clip, Resource, Web Data, Compare, RSS, Formula and Page Watch widgets.
+- Quick Capture for pages and selected text, bookmark import, reversible Trash and recovery export.
 
-## React Compiler
+## Development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```sh
+npm install
+npm run dev
+npm run build
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The build runs TypeScript checks and creates `dist`. To use the extension, enable developer mode on your browser's extensions page and load `dist` as an unpacked extension. Browser APIs require the extension environment; the development server is useful for UI development.
+
+## Privacy and permissions
+
+Workspace data is stored locally using browser extension storage. No cloud account is required. External-source widgets contact the sources you configure. Favicon access and external host access are optional; host access is requested for a specific origin only through an explicit user action. Page-selection capture uses the active tab after popup interaction.
+
+See [Privacy](PRIVACY.md), [Permissions](PERMISSIONS.md) and the short [store submission summary](STORE_SUMMARY.md).
+
+## License
+
+Otium is available under the [MIT License](LICENSE).

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Otium Hybrid Home fixture</title></head>
+<body>
+  <div id="root"></div>
+  <output id="fixture-status" hidden></output>
+  <script>
+    // Isolated development fixture. Production never loads this mock.
+    const scenario = new URLSearchParams(location.search).get('case') || 'links';
+    const storageKey = 'otium-hybrid-fixture-' + scenario;
+    const linkIds = ['a', 'b', 'c', 'd', 'row-left', 'row-right', 'source', 'blocker'];
+    const links = linkIds.map((id, index) => ({ id, title: ({ a: 'GitHub', b: 'Wikipedia', c: 'Documentation', d: 'Design', 'row-left': 'Tasks', 'row-right': 'Research', source: 'Source', blocker: 'Other row' })[id],
+      url: ['https://github.com/', 'https://wikipedia.org/', 'https://example.com/', 'https://figma.com/', 'https://trello.com/', 'https://developer.chrome.com/', 'https://example.org/', 'https://example.net/'][index], createdAt: index + 1 }));
+    const workspaceItems = [
+      ...['a', 'b', 'c', 'd'].map((id, index) => ({ id: id + '-home', type: 'link', linkId: id, x: 4 + index * 4, y: 4 })),
+      { id: 'row-left-home', type: 'link', linkId: 'row-left', x: 4, y: 0 },
+      { id: 'neighbor-home', type: 'project', projectId: 'neighbor', x: 8, y: 0 },
+      { id: 'row-right-home', type: 'link', linkId: 'row-right', x: 16, y: 0 },
+      { id: 'source-home', type: 'link', linkId: 'source', x: 4, y: 8 },
+      { id: 'project-home', type: 'project', projectId: 'project', x: 4, y: 12 }
+    ];
+    if (scenario === 'blocked') workspaceItems.push({ id: 'blocker-home', type: 'link', linkId: 'blocker', x: 20, y: 5 });
+    const fixture = JSON.parse(sessionStorage.getItem(storageKey) || 'null') || {
+      persistentData: { schemaVersion: 2, links,
+        projects: [
+          { id: 'neighbor', name: 'Mixed neighbor', linkIds: ['a', 'b'], createdAt: 1, updatedAt: 1 },
+          { id: 'project', name: 'Insert collection', linkIds: ['c', 'd'], createdAt: 2, updatedAt: 2 }
+        ], workspaceItems, settings: { appearance: { itemSize: 82, theme: 'light' } }
+      }
+    };
+    let writes = 0, opened = [], previewSamples = [];
+    const report = () => { document.getElementById('fixture-status').textContent = JSON.stringify({ writes, opened, previewSamples }); };
+    report();
+    window.chrome ??= {};
+    window.chrome.storage = { local: {
+      async get(keys) { return structuredClone(Object.fromEntries(keys.map(key => [key, fixture[key]]))); },
+      async set(update) { writes++; Object.assign(fixture, structuredClone(update)); sessionStorage.setItem(storageKey, JSON.stringify(fixture)); report(); }
+    }};
+    window.chrome.tabs = { async create(options) { opened.push(options); report(); } };
+    new MutationObserver(() => {
+      const dragged = document.querySelector('.home-spatial-item.is-dragging');
+      const target = document.querySelector('.drop-preview');
+      if (!dragged || !target || previewSamples.length >= 20) return;
+      previewSamples.push({ writes, dragged: dragged.title, target: target.getAttribute('style'),
+        neighbors: Array.from(document.querySelectorAll('.home-spatial-item:not(.is-dragging)')).map(element => ({ title: element.title, style: element.getAttribute('style') })) });
+      report();
+    }).observe(document.getElementById('root'), { subtree: true, attributes: true, childList: true });
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

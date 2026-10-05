@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Otium UI test fixture</title></head>
+<body>
+  <div id="root"></div>
+  <script>
+    // Browser-only test fixture. Production index.html never loads this storage mock.
+    const fixtureData = {
+      links: [
+        { id: 'github', type: 'link', title: 'GitHub', url: 'https://github.com/', x: 4, y: 0, createdAt: 1 },
+        { id: 'wiki', type: 'link', title: 'Wikipedia', url: 'https://wikipedia.org/', x: 8, y: 0, createdAt: 2 },
+        { id: 'docs', type: 'link', title: 'Documentation', url: 'https://example.com/', x: 4, y: 4, createdAt: 3 }
+      ],
+      theme: 'light'
+    };
+    window.chrome ??= {};
+    window.chrome.storage = { local: {
+      async get(keys) { return structuredClone(Object.fromEntries(keys.map(key => [key, fixtureData[key]]))); },
+      async set(update) { Object.assign(fixtureData, structuredClone(update)); }
+    }};
+  </script>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

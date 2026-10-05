@@ -1,0 +1,5 @@
+export const SORTABLE_DRAG_THRESHOLD = 5;
+export const SORTABLE_ITEM_WIDTH = 160;
+export const SORTABLE_ITEM_HEIGHT = 42;
+export const SORTABLE_ITEM_GAP = 10;
+export const SORTABLE_SHIFT_DURATION = 180;

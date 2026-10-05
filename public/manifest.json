@@ -3,8 +3,23 @@
   "name": "Otium",
   "description": "A minimal personal workspace for your new tab.",
   "version": "0.1.0",
-
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Save to Otium"
+  },
   "chrome_url_overrides": {
     "newtab": "index.html"
-  }
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://*/*"
+  ],
+  "optional_permissions": [
+    "favicon"
+  ]
 }

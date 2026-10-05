@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Otium span geometry fixture</title></head><body><div id="root"></div><output id="fixture-status" hidden></output>
+<script type="module">
+import { getBaseHomeSpan } from '/src/utils/homeLayout.ts';
+import { DEFAULT_ITEM_SIZE } from '/src/domain/settings.ts';
+const itemSize = Number(new URLSearchParams(location.search).get('size') || DEFAULT_ITEM_SIZE);
+const regression = new URLSearchParams(location.search).has('regression');
+const key = 'otium-span-fixture-' + itemSize + (regression ? '-regression' : '');
+const pitch = getBaseHomeSpan(itemSize).columns;
+const rowX = Math.max(4, pitch);
+const links = ['One','Two','Source'].map((title,index)=>({id:'link-'+index,title,url:'https://example.com/'+index,createdAt:1}));
+const projects = [
+ {id:'short',name:'CRM',linkIds:['link-0'],createdAt:1,updatedAt:1,color:'neutral'},
+ {id:'medium',name:'Project Alpha',linkIds:['link-0','link-1'],createdAt:1,updatedAt:1,color:'blue'},
+ {id:'long',name:'Website Redesign and Marketing Plan',linkIds:['link-0','link-1'],createdAt:1,updatedAt:1,color:'teal'},
+ {id:'source',name:'Project Source',linkIds:['link-0'],createdAt:1,updatedAt:1,color:'rose'}
+];
+const fixture = JSON.parse(sessionStorage.getItem(key)||'null') || {persistentData:{schemaVersion:2,links,projects,workspaceItems:[
+ {id:'one',type:'link',linkId:'link-0',x:rowX,y:4},
+ {id:'two',type:'link',linkId:'link-1',x:rowX+pitch,y:4},
+ {id:'short-item',type:'project',projectId:'short',x:rowX+2*pitch,y:4},
+ {id:'medium-item',type:'project',projectId:'medium',x:rowX+3*pitch,y:4},
+ {id:'long-item',type:'project',projectId:'long',x:rowX+5*pitch,y:4},
+ {id:'source-item',type:'project',projectId:'source',x:rowX,y:10},
+ {id:'source-link',type:'link',linkId:'link-2',x:rowX,y:14},
+ ...(regression ? [
+  {id:'unrelated-1',type:'link',linkId:'link-2',x:8,y:20},
+  {id:'unrelated-2',type:'link',linkId:'link-2',x:8,y:20}
+ ] : [])
+],settings:{appearance:{itemSize,theme:'dark'}}}};
+let writes=0,opened=[];
+function report(){document.getElementById('fixture-status').textContent=JSON.stringify({writes,opened,canonical:fixture.persistentData.workspaceItems});}
+window.chrome ??= {};
+window.chrome.storage={local:{async get(keys){return structuredClone(Object.fromEntries(keys.map(key=>[key,fixture[key]])));},async set(update){writes++;Object.assign(fixture,structuredClone(update));sessionStorage.setItem(key,JSON.stringify(fixture));report();}}};
+window.chrome.tabs={async create(options){opened.push(options);report();}};
+report();
+await import('/src/main.tsx');
+</script></body></html>
