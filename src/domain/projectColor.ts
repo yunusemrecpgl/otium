@@ -1,4 +1,4 @@
-export const PROJECT_COLORS = ['neutral', 'slate', 'blue', 'teal', 'green', 'amber', 'rose', 'violet'] as const;
+export const PROJECT_COLORS = ['neutral', 'slate', 'blue', 'teal', 'green', 'amber', 'rose', 'violet', 'copper', 'olive', 'plum', 'cyan'] as const;
 export type ProjectColor = typeof PROJECT_COLORS[number];
 
 export function isProjectColor(value: unknown): value is ProjectColor {

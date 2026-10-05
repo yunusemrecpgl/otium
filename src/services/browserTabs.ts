@@ -18,6 +18,11 @@ function chromeTabs(): BrowserTabs {
 export function createBrowserTabsService(getTabs: () => BrowserTabs = chromeTabs) {
   const opening = new Map<string, Promise<void>>();
   return {
+    async openWidgets(): Promise<void> {
+      const runtime = (globalThis as typeof globalThis & { chrome?: { runtime?: { getURL(path: string): string } } }).chrome?.runtime;
+      if (!runtime) throw new Error('Open Otium as an extension to manage widgets.');
+      await getTabs().create({ url: runtime.getURL('index.html#widgets'), active: true });
+    },
     async openLink(input: string): Promise<void> {
       const url = normalizeUrl(input);
       if (!url) throw new Error('This website URL is unavailable.');

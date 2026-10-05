@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useEffect, useState } from 'react';
 
 type CountdownPart = { value: number; unit: string };
@@ -18,6 +19,7 @@ function countdownParts(remaining: number): CountdownPart[] {
 }
 
 export function ResourceCountdown({ datetime }: { datetime?: string }) {
+  useLocale();
   const target = datetime?.trim() ? Date.parse(datetime) : NaN;
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -33,11 +35,11 @@ export function ResourceCountdown({ datetime }: { datetime?: string }) {
   }, [target]);
   if (!Number.isFinite(target)) return null;
   const parts = countdownParts(target - now);
-  const text = parts.length ? parts.map(part => `${part.value} ${part.unit}`).join(' ') : "It's time";
+  const text = parts.length ? parts.map(part => `${part.value} ${t(part.unit)}`).join(' ') : t("It's time");
   return <span className="resource-countdown" title={text} aria-label={text}>
     {parts.length ? parts.map(part => <span className="resource-countdown-part" key={part.unit} aria-hidden="true">
       <strong className="resource-countdown-value">{part.value}</strong>
-      <span className="resource-countdown-unit">{part.unit}</span>
-    </span>) : <span className="resource-countdown-reached">It's time</span>}
+      <span className="resource-countdown-unit">{t(part.unit)}</span>
+    </span>) : <span className="resource-countdown-reached">{t("It's time")}</span>}
   </span>;
 }

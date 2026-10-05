@@ -1,9 +1,12 @@
+import { t, useLocale } from "../../i18n";
 import { useEffect, useId, useRef, useState } from 'react';
 import { WidgetRegistry } from '../../services/widgetRegistry';
 import { WidgetIcon } from '../widgets/WidgetIcon';
+import { Globe } from 'lucide-react';
 
-export function ProjectAddMenu({ disabled, onWebsite, onWidget }: { disabled: boolean; onWebsite: () => void; onWidget: (type: string) => void }) {
-  const [panel, setPanel] = useState<'menu' | 'widgets' | null>(null);
+export function ProjectAddMenu({ disabled, onWebsite, onWidget }: { disabled: boolean; enabledWidgetTypes: ReadonlySet<string>; onWebsite: () => void; onWidget: (type: string) => void }) {
+  useLocale();
+  const [panel, setPanel] = useState<'menu' | null>(null);
   const control = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -23,18 +26,12 @@ export function ProjectAddMenu({ disabled, onWebsite, onWidget }: { disabled: bo
     return () => { window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', escape); };
   }, [panel]);
   return <div ref={control} className="project-add-control">
-    <button ref={trigger} type="button" className="quiet-button project-canvas-add-button" aria-label="Add to project" title="Add to project" disabled={disabled} aria-expanded={panel !== null}
+    <button ref={trigger} type="button" className="quiet-button project-canvas-add-button" aria-label={t("Add to project")} title={t("Add to project")} disabled={disabled} aria-expanded={panel !== null}
       aria-controls={panel ? panelId : undefined} onClick={() => setPanel(current => current ? null : 'menu')}>+</button>
-    {panel && <div ref={panelRef} id={panelId} className="project-add-panel" role="group" aria-label={panel === 'menu' ? 'Add to project' : 'Project widgets'}>
-      {panel === 'menu' ? <>
-        <button type="button" disabled={disabled} onClick={() => { setPanel(null); onWebsite(); }}>Website</button>
-        <button type="button" disabled={disabled} onClick={() => setPanel('widgets')}>Widget</button>
-      </> : <>
-        <button type="button" onClick={() => setPanel('menu')}>← Back</button>
-        {widgets.length === 0 ? <p className="muted" role="status">No widgets available yet.</p>
-          : widgets.map(widget => <button key={widget.type} type="button" disabled={disabled}
-            onClick={() => { setPanel(null); onWidget(widget.type); }}><WidgetIcon type={widget.type} size={15} /> {widget.name}</button>)}
-      </>}
+    {panel && <div ref={panelRef} id={panelId} className="project-add-panel" role="group" aria-label={t("Add to project")}>
+      <button type="button" disabled={disabled} onClick={() => { setPanel(null); onWebsite(); }}><Globe size={15} /> {t("Website")}</button>
+      {widgets.map(widget => <button key={widget.type} type="button" disabled={disabled}
+        onClick={() => { setPanel(null); onWidget(widget.type); }}><WidgetIcon type={widget.type} size={15} /> {t(widget.name)}</button>)}
     </div>}
   </div>;
 }

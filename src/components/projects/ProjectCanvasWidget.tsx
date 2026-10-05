@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { lazy, memo, Suspense, useCallback, useMemo, useState } from 'react';
 import type { ProjectCanvasItem } from '../../domain/projectCanvasItem';
 import type { WidgetInstance } from '../../domain/widget';
@@ -41,6 +42,7 @@ export const ProjectCanvasWidget = memo(function ProjectCanvasWidget({ item, ins
   appearanceTarget?: HTMLElement | null;
   onQuickActions: RegisterProjectQuickActions;
 }) {
+  useLocale();
   const instance = useMemo(() => draft ? { ...storedInstance, config: draft as unknown as WidgetInstance['config'] } : storedInstance, [storedInstance, draft]);
   const interaction = useCallback((active: boolean) => onInteraction(item.id, active), [item.id, onInteraction]);
   const boundary = useMemo(() => ({ selected, inspectorOpen: !!inspectorTarget }), [selected, inspectorTarget]);
@@ -54,10 +56,10 @@ export const ProjectCanvasWidget = memo(function ProjectCanvasWidget({ item, ins
     style={{ left: item.x, top: item.y, width: size.width, height: size.height, zIndex: item.zIndex }}>
     <ErrorBoundary resetKey={resetKey}
       onReset={() => setRenderers(createRenderers())}
-      fallback={retry => <div className="project-widget-error" role="alert"><span>Something went wrong</span>
-        <button type="button" className="quiet-button" onClick={retry}>Retry</button></div>}>
+      fallback={retry => <div className="project-widget-error" role="alert"><span>{t("Something went wrong")}</span>
+        <button type="button" className="quiet-button" onClick={retry}>{t("Retry")}</button></div>}>
     <WidgetDraftBoundary.Provider value={boundary}>
-    <Suspense fallback={<div className="project-widget-loading" role="status" aria-label="Loading widget"><span aria-hidden="true" /></div>}>
+    <Suspense fallback={<div className="project-widget-loading" role="status" aria-label={t("Loading widget")}><span aria-hidden="true" /></div>}>
       {instance.type === 'note' && <NoteWidget instance={instance} disabled={disabled} onUpdate={onUpdate} onPreview={onPreview} />}
       {instance.type === 'todo' && <TodoWidget instance={instance} disabled={disabled} onUpdate={onUpdate} onPreview={onPreview} />}
       {instance.type === 'resource' && <ResourceWidget instance={instance} disabled={disabled} onUpdate={onUpdate} inspectorTarget={inspectorTarget} onQuickActions={onQuickActions} />}

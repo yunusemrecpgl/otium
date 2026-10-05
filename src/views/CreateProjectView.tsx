@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent } from 'react';
 import type { Link } from '../domain/link';
@@ -34,6 +35,7 @@ interface CreateProjectViewProps {
 }
 
 export function CreateProjectView({ links, availableLinks, folders, workspaceItems, initialProject, onCreate, onCancel, onComplete, onSavingChange }: CreateProjectViewProps) {
+  useLocale();
   const [draft, setDraft] = useState(() => initialProject ? {
     id: initialProject.id, name: initialProject.name, linkIds: [...initialProject.linkIds],
     projectLinks: links.filter(link => link.projectId === initialProject.id && initialProject.linkIds.includes(link.id)),
@@ -95,29 +97,29 @@ export function CreateProjectView({ links, availableLinks, folders, workspaceIte
   return (
     <main className="create-project-view" style={sortableStyle}>
       <header className="creation-header">
-        {initialProject ? <span className="eyebrow">Edit project websites</span> : <ProjectSteps step={step} />}
-        <button type="button" className="text-button" onClick={onCancel} disabled={busy || !!drag}>Cancel</button>
+        {initialProject ? <span className="eyebrow">{t("Edit project websites")}</span> : <ProjectSteps step={step} />}
+        <button type="button" className="text-button" onClick={onCancel} disabled={busy || !!drag}>{t("Cancel")}</button>
       </header>
       {step === 1 ? (
         <div key="identity" className={`project-identity page-enter-${direction}`}>
           <form className="project-name-form" onSubmit={continueProject}>
-            <p className="eyebrow">{initialProject ? 'Edit project' : 'New project'}</p>
-            <h1>Give your project a name</h1>
-            <label htmlFor="project-name">Project name</label>
-            <input ref={nameInput} id="project-name" placeholder="canmet.02" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} required maxLength={120} autoComplete="off" />
-            <button type="submit" className="quiet-button continue-button" disabled={!draft.name.trim()}>Continue <span aria-hidden="true">→</span></button>
+            <p className="eyebrow">{initialProject ? t("Edit project") : t("New project")}</p>
+            <h1>{t("Give your project a name")}</h1>
+            <label htmlFor="project-name">{t("Project name")}</label>
+            <input ref={nameInput} id="project-name" placeholder="example.com" value={draft.name} onChange={(event) => setDraft((current) => ({ ...current, name: event.target.value }))} required maxLength={120} autoComplete="off" />
+            <button type="submit" className="quiet-button continue-button" disabled={!draft.name.trim()}>{t("Continue")} <span aria-hidden="true">→</span></button>
           </form>
           <aside className="project-introduction">
             <ProjectIllustration />
-            <h2>A place for your work</h2>
-            <p>Keep the links for a piece of work together in one project.</p>
+            <h2>{t("A place for your work")}</h2>
+            <p>{t("Keep the links for a piece of work together in one project.")}</p>
           </aside>
         </div>
       ) : (
         <div key="builder" className={`project-builder page-enter-forward${drag ? ' is-sortable-dragging' : ''}`}>
           <div className="builder-heading">
-            <div><p className="eyebrow">Project links</p><h1 ref={stepHeading} tabIndex={-1}>{draft.name}</h1></div>
-            <button type="button" className="quiet-button" onClick={() => void finish()} disabled={busy || !!drag}>{busy ? (initialProject ? 'Saving…' : 'Creating…') : (initialProject ? 'Save Changes' : 'Create Project')}</button>
+            <div><p className="eyebrow">{t("Project links")}</p><h1 ref={stepHeading} tabIndex={-1}>{draft.name}</h1></div>
+            <button type="button" className="quiet-button" onClick={() => void finish()} disabled={busy || !!drag}>{busy ? (initialProject ? t("Saving…") : t("Creating…")) : (initialProject ? t("Save Changes") : t("Create Project"))}</button>
           </div>
           <ProjectSlotbar linkIds={draft.linkIds} links={resolvedLinks} onRemove={(id) => setDraft((current) => removeDraftLink(current, id))} disabled={busy} zoneRef={zoneRef} drag={drag} getDragHandlers={(id) => getSourceHandlers(id, 'list')} onScroll={onScroll} zoneHandlers={zoneHandlers} />
           <div className="builder-regions">
@@ -128,11 +130,11 @@ export function CreateProjectView({ links, availableLinks, folders, workspaceIte
               })} disabled={busy} draggedId={drag?.id} getDragHandlers={id => getSourceHandlers(id, 'external')} />
             <ProjectLinkForm onAdd={(title, url) => setDraft(addDraftProjectLink(draft, title, url))} disabled={busy || !!drag} />
           </div>
-          {error && <p className="form-error" role="alert">{error}</p>}
+          {error && <p className="form-error" role="alert">{t(error)}</p>}
           <footer className="builder-footer"><button type="button" className="text-button" disabled={busy || !!drag} onClick={() => {
             if (initialProject) { onCancel(); return; }
             setDirection('back'); setStep(1);
-          }}>← Back</button></footer>
+          }}>{t("← Back")}</button></footer>
         </div>
       )}
       <SortableDragPreview drag={drag} link={resolvedLinks.find((link) => link.id === drag?.id)} />

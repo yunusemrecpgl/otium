@@ -6,7 +6,7 @@ Turn your new tab into a local-first workspace for links, Projects, notes and so
 
 ## Permission justification
 
-Otium uses `storage` for local workspace/settings data, reversible Trash and recovery snapshots. `activeTab` provides temporary access after the user opens the action popup to capture the current page or selected text. `scripting` runs built-in selection and CSS-selector text-reading helpers; Rendered Page Watch also requires access to the configured origin and an already-open matching tab. Optional `favicon` access supplies browser website icons. Optional HTTP/HTTPS host patterns allow explicit, origin-specific access requests for external sources; Otium does not request all-site access at installation or startup. Bookmark import uses a user-selected file and requires no bookmarks permission.
+Otium uses `storage` for local workspace/settings data, reversible Trash and recovery snapshots. `activeTab` provides temporary access after the user opens the action popup to capture the current page. Optional `scripting` is requested explicitly when enabling Clip selected-text capture or choosing Rendered Page Watch; its built-in text-reading helpers require active-tab access or an approved origin. Rendered Page Watch also requires an already-open matching tab. Optional `favicon` access supplies browser website icons. Optional HTTP/HTTPS host patterns allow explicit, origin-specific access requests for external sources; enabling a widget does not request broad host access, and Otium does not request all-site access at installation or startup. Bookmark import uses a user-selected file and requires no bookmarks permission.
 
 ## Privacy summary
 

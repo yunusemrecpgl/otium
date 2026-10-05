@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { WidgetDraftBoundary } from '../../hooks/useWidgetDraftPersistence';
@@ -5,6 +6,7 @@ import { WidgetDraftBoundary } from '../../hooks/useWidgetDraftPersistence';
 export function WebDataFieldLabel({ label, disabled, style, onCommit }: {
   label: string; disabled: boolean; style?: CSSProperties; onCommit: (label: string) => void;
 }) {
+  useLocale();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(label);
   const cancelled = useRef(false);
@@ -36,7 +38,7 @@ export function WebDataFieldLabel({ label, disabled, style, onCommit }: {
       mounted.current = false; finish();
     };
   }, []);
-  return editing ? <input autoFocus spellCheck={false} className="web-data-field-label" aria-label="Field label" value={draft} style={style}
+  return editing ? <input autoFocus spellCheck={false} className="web-data-field-label" aria-label={t("Field label")} value={draft} style={style}
     disabled={disabled} onFocus={event => event.target.select()} onChange={event => { latest.current = event.target.value; setDraft(event.target.value); }} onBlur={finish}
     onKeyDown={event => {
       if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); event.currentTarget.blur(); }

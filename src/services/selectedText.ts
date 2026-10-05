@@ -1,5 +1,6 @@
 import { normalizeUrl } from '../utils/url';
 import { buildTextFragmentUrl } from '../utils/textFragment';
+import { permissionService } from './permissions';
 
 export interface PageSelection { text: string; sourceUrl: string; sourceTitle: string; prefix?: string; suffix?: string; textFragmentUrl?: string; faviconUrl?: string }
 
@@ -7,6 +8,7 @@ export interface PageSelection { text: string; sourceUrl: string; sourceTitle: s
 // grants access only to that tab; restricted browser pages fail without injection.
 export const selectedTextService = {
   async read(): Promise<PageSelection | null> {
+    if (!await permissionService.hasCapabilities(['active-page-capture'])) return null;
     const chrome = (globalThis as typeof globalThis & { chrome?: {
       tabs?: { query(query: { active: boolean; currentWindow: boolean }): Promise<{ id?: number; url?: string; favIconUrl?: string }[]> };
       scripting?: { executeScript(options: { target: { tabId: number }; func: () => PageSelection }): Promise<{ result?: PageSelection }[]> };

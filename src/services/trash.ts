@@ -4,9 +4,60 @@ import { findNearestFreePosition, getWorkspaceItemDimensions, toSpatialItems } f
 import type { WorkspaceGeometry } from '../utils/workspace';
 import { canTransferToContainer, getFolderPath } from '../utils/folderHierarchy';
 import { restoreProjectCanvasItem } from './projectCanvasTrash';
-import { uniqueProjectCanvasPlacements } from './projectCanvasValidation';
+import { isProjectCanvasPlacement, uniqueProjectCanvasPlacements } from './projectCanvasValidation';
 
 export const TRASH_DESTINATION = '__otium_trash__';
+
+export function hasPermanentTrash(data: OtiumData): boolean {
+  return data.projects.some(item => !!item.trashedAt) || data.folders.some(item => !!item.trashedAt) ||
+    data.workspaceItems.some(item => !!item.trashedAt) || data.projectCanvasItems.some(item => isProjectCanvasPlacement(item) && !!item.trashedAt);
+}
+
+export function emptyTrash(data: OtiumData): OtiumData {
+  const projects = new Set(data.projects.filter(item => item.trashedAt).map(item => item.id));
+  const folders = new Set(data.folders.filter(item => item.trashedAt).map(item => item.id));
+  // Folder descendants are hidden with their parent. Keep any Folder which
+  // also has a surviving placement outside the deleted subtree.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const item of data.workspaceItems) {
+      if (item.type !== 'folder' || !folders.has(item.containerId) || folders.has(item.folderId)) continue;
+      if (data.workspaceItems.some(other => other.type === 'folder' && other.folderId === item.folderId && !other.trashedAt && !folders.has(other.containerId))) continue;
+      folders.add(item.folderId); changed = true;
+    }
+  }
+  const removedWorkspace = data.workspaceItems.filter(item => item.trashedAt || folders.has(item.containerId) ||
+    (item.type === 'folder' && folders.has(item.folderId)) || (item.type === 'project' && projects.has(item.projectId)));
+  const removedIds = new Set(removedWorkspace.map(item => item.id));
+  const workspaceItems = data.workspaceItems.filter(item => !removedIds.has(item.id));
+  const removedCanvas = data.projectCanvasItems.filter(item => isProjectCanvasPlacement(item) && (item.trashedAt || projects.has(item.projectId)));
+  const canvasIds = new Set(removedCanvas.map(item => item.id));
+  const projectCanvasItems = data.projectCanvasItems.filter(item => !canvasIds.has(item.id));
+  const remainingProjects = data.projects.filter(item => !projects.has(item.id)).map(project => {
+    const removedLinks = new Set(removedCanvas.filter(item => item.projectId === project.id && item.type === 'link').map(item => item.referenceId));
+    const survivingLinks = new Set(projectCanvasItems.filter(item => item.projectId === project.id && item.type === 'link').map(item => item.referenceId));
+    return { ...project, linkIds: project.linkIds.filter(id => !removedLinks.has(id) || survivingLinks.has(id)) };
+  });
+  const linkCandidates = new Set([
+    ...removedWorkspace.flatMap(item => item.type === 'link' ? [item.linkId] : []),
+    ...removedCanvas.flatMap(item => item.type === 'link' ? [item.referenceId] : []),
+    ...data.projects.filter(item => projects.has(item.id)).flatMap(item => item.linkIds),
+    ...data.links.filter(item => item.projectId && projects.has(item.projectId)).map(item => item.id),
+  ]);
+  const usedLinks = new Set([...workspaceItems.flatMap(item => item.type === 'link' ? [item.linkId] : []),
+    ...projectCanvasItems.flatMap(item => item.type === 'link' ? [item.referenceId] : []), ...remainingProjects.flatMap(item => item.linkIds)]);
+  const widgetCandidates = new Set(removedCanvas.filter(item => item.type === 'widget').map(item => item.referenceId));
+  const usedWidgets = new Set(projectCanvasItems.filter(item => item.type === 'widget').map(item => item.referenceId));
+  return { ...data, workspaceItems, projectCanvasItems, projects: remainingProjects,
+    folders: data.folders.filter(item => !folders.has(item.id)),
+    projectCanvasStates: data.projectCanvasStates.filter(item => !projects.has(item.projectId)),
+    links: data.links.filter(item => !linkCandidates.has(item.id) || usedLinks.has(item.id)).map(item => {
+      if (!item.projectId || !projects.has(item.projectId)) return item;
+      const retained = { ...item }; delete retained.projectId; return retained;
+    }),
+    widgetInstances: data.widgetInstances.filter(item => !widgetCandidates.has(item.id) || usedWidgets.has(item.id)) };
+}
 
 export interface TrashTarget {
   type: 'workspace' | 'project' | 'folder' | 'canvas';

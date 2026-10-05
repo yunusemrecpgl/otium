@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import { ScanSearch } from 'lucide-react';
 import { WidgetInspectorPortal } from '../projects/WidgetInspectorPortal';
 import { useEffect, useRef, useState } from 'react';
@@ -12,6 +13,7 @@ export default function PageWatchDiscovery({ url, selector, currentValue, disabl
   onAddPath?: (url: string, path: string) => void;
   inspectorTarget?: HTMLElement | null; compact?: boolean;
 }) {
+  useLocale();
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<SourceCandidate[] | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -34,22 +36,22 @@ export default function PageWatchDiscovery({ url, selector, currentValue, disabl
     }
   }
   const controls = <div className="page-watch-discovery">
-    <button type="button" className={compact ? "quiet-button" : "text-button"} aria-label="Discover source" title={loading ? "Discovering…" : "Discover source"} disabled={disabled || loading || !url.trim()} onClick={() => { void discover(); }}>
-      {compact ? <ScanSearch size={16} aria-hidden="true" /> : loading ? 'Discovering…' : 'Discover source'}
+    <button type="button" className={compact ? "quiet-button" : "text-button"} aria-label={t("Discover source")} title={loading ? t("Discovering…") : t("Discover source")} disabled={disabled || loading || !url.trim()} onClick={() => { void discover(); }}>
+      {compact ? <ScanSearch size={16} aria-hidden="true" /> : loading ? t("Discovering…") : t("Discover source")}
     </button>
     {error && <ExternalSourceError error={error} disabled={disabled || loading} onRetry={() => { void discover(); }} />}
-    {results && !results.length && <p className="muted">No likely direct sources found.</p>}
+    {results && !results.length && <p className="muted">{t("No likely direct sources found.")}</p>}
     {results?.map(candidate => {
       const source = new URL(candidate.url);
       return <div className="page-watch-candidate" key={candidate.url}>
-        <span className="muted">{candidate.matched ? 'Matching direct data source found' : candidate.verified ? 'Direct JSON source found' : 'Possible data source'}</span>
+        <span className="muted">{candidate.matched ? t("Matching direct data source found") : candidate.verified ? t("Direct JSON source found") : t("Possible data source")}</span>
         <span className="page-watch-candidate-url" title={candidate.url}>{source.pathname}{source.search}</span>
-        {source.origin !== new URL(normalizeUrl(url) ?? candidate.url).origin && <span className="muted">{source.hostname} · access may be required</span>}
-        {candidate.value !== undefined && <span className="page-watch-candidate-value" title={candidate.value}>Possible value: {candidate.path || 'root'} → {candidate.value}</span>}
-        <button type="button" className="quiet-button" disabled={disabled} onClick={() => onUse(candidate.url, candidate.path ?? '')}>Use source</button>
+        {source.origin !== new URL(normalizeUrl(url) ?? candidate.url).origin && <span className="muted">{source.hostname} {t("· access may be required")}</span>}
+        {candidate.value !== undefined && <span className="page-watch-candidate-value" title={candidate.value}>{t("Possible value:")} {candidate.path || 'root'} → {candidate.value}</span>}
+        <button type="button" className="quiet-button" disabled={disabled} onClick={() => onUse(candidate.url, candidate.path ?? '')}>{t("Use source")}</button>
         {candidate.suggestedPaths?.map(entry => <div className="page-watch-path-suggestion" key={entry.path}>
           <span title={`${entry.path} → ${entry.value}`}>{entry.path || 'root'} → {entry.value}</span>
-          <button type="button" className="text-button" disabled={disabled} onClick={() => onAddPath?.(candidate.url, entry.path)}>+ Field</button>
+          <button type="button" className="text-button" disabled={disabled} onClick={() => onAddPath?.(candidate.url, entry.path)}>{t("+ Field")}</button>
         </div>)}
       </div>;
     })}

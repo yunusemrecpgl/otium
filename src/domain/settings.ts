@@ -1,4 +1,7 @@
 import { GRID_SIZE } from '../constants/grid';
+import type { WidgetCapabilityState } from './widget';
+import { browserLocale } from '../i18n/locale';
+import type { Locale } from '../i18n/locale';
 
 export type Theme = 'light' | 'dark';
 export type ThemePreference = 'system' | Theme;
@@ -6,10 +9,12 @@ export type ThemePreference = 'system' | Theme;
 export interface AppearanceSettings {
   itemSize: number;
   theme: ThemePreference;
+  language?: Locale;
 }
 
 export interface UserSettings {
   appearance: AppearanceSettings;
+  widgetCapabilities?: Record<string, WidgetCapabilityState>;
 }
 
 export const ITEM_SIZE_MIN_MULTIPLIER = 1;
@@ -27,5 +32,5 @@ export function normalizeItemSize(value: unknown): number {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  appearance: { itemSize: DEFAULT_ITEM_SIZE, theme: 'system' },
+  appearance: { itemSize: DEFAULT_ITEM_SIZE, theme: 'system', language: browserLocale() },
 };

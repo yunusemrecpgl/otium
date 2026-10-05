@@ -3,23 +3,33 @@
   "name": "Otium",
   "description": "A minimal personal workspace for your new tab.",
   "version": "0.1.0",
+  "icons": {
+    "16": "otium-logo.png",
+    "32": "otium-logo.png",
+    "48": "otium-logo.png",
+    "128": "otium-logo.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Save to Otium"
+    "default_title": "Save to Otium",
+    "default_icon": {
+      "16": "otium-action-black-16.png",
+      "32": "otium-action-black-32.png"
+    }
   },
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
   "permissions": [
     "storage",
-    "activeTab",
-    "scripting"
+    "activeTab"
   ],
   "optional_host_permissions": [
     "https://*/*",
     "http://*/*"
   ],
   "optional_permissions": [
-    "favicon"
+    "favicon",
+    "scripting"
   ]
 }

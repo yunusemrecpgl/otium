@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Folder, FolderPatch } from '../domain/folder';
 import { FolderIcon } from './FolderIcon';
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function FolderEditor({ folder, onUpdate, onFlush }: Props) {
+  useLocale();
   const [open, setOpen] = useState(false);
   const [picker, setPicker] = useState<'icon' | 'color' | null>(null);
   const [position, setPosition] = useState({ left: 8, top: 8 });
@@ -62,23 +64,23 @@ export function FolderEditor({ folder, onUpdate, onFlush }: Props) {
   }
 
   return <>
-    <button ref={trigger} type="button" className="folder-edit-trigger" aria-label="Edit folder" aria-expanded={open} aria-controls={open ? 'folder-editor' : undefined}
+    <button ref={trigger} type="button" className="folder-edit-trigger" aria-label={t("Edit folder")} aria-expanded={open} aria-controls={open ? 'folder-editor' : undefined}
       onClick={() => { if (open) close(); else { setOpen(true); setError(null); } }}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="5" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="12" cy="19" r="2" /></svg>
     </button>
-    {open && <div ref={panel} id="folder-editor" className="folder-editor" role="region" aria-label="Folder settings" style={position}>
-      <textarea ref={textarea} rows={2} maxLength={40} aria-label="Folder name" placeholder="Folder name" value={folder.name}
+    {open && <div ref={panel} id="folder-editor" className="folder-editor" role="region" aria-label={t("Folder settings")} style={position}>
+      <textarea ref={textarea} rows={2} maxLength={40} aria-label={t("Folder name")} placeholder={t("Folder name")} value={folder.name}
         aria-describedby="folder-name-count" onChange={event => update({ name: event.target.value.slice(0, 40) })} />
       <span id="folder-name-count" className="folder-name-count">{folder.name.length} / 40</span>
       <div className="folder-editor-tiles">
-        <button type="button" className="folder-editor-tile" aria-label="Change folder icon" aria-expanded={picker === 'icon'} onClick={() => setPicker(previous => previous === 'icon' ? null : 'icon')}><FolderIcon icon={folder.icon} /></button>
-        <button type="button" className="folder-editor-tile" aria-label="Change folder color" aria-expanded={picker === 'color'} onClick={() => setPicker(previous => previous === 'color' ? null : 'color')}>
+        <button type="button" className="folder-editor-tile" aria-label={t("Change folder icon")} aria-expanded={picker === 'icon'} onClick={() => setPicker(previous => previous === 'icon' ? null : 'icon')}><FolderIcon icon={folder.icon} /></button>
+        <button type="button" className="folder-editor-tile" aria-label={t("Change folder color")} aria-expanded={picker === 'color'} onClick={() => setPicker(previous => previous === 'color' ? null : 'color')}>
           <span className="project-color-swatch folder-editor-color" data-project-color={folder.color} aria-hidden="true" />
         </button>
       </div>
       {picker === 'icon' && <FolderIconPicker value={folder.icon} onChange={icon => { update({ icon }); setPicker(null); }} />}
       {picker === 'color' && <FolderColorPicker value={folder.color} onChange={color => { update({ color }); setPicker(null); }} />}
-      {error && <p className="form-error" role="alert">{error}</p>}
+      {error && <p className="form-error" role="alert">{t(error)}</p>}
     </div>}
   </>;
 }

@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import type { Link } from '../../domain/link';
 import { LinkItemContent } from '../LinkItemContent';
 import type { SortableSourceHandlers } from '../../hooks/useSortableDrag';
@@ -14,13 +15,14 @@ interface ExistingLinksProps {
 }
 
 export function ExistingLinks({ links, selectedIds, onSelect, disabled, draggedId, getDragHandlers, heading = 'Existing Links', emptyMessage = 'No global links yet.' }: ExistingLinksProps) {
+  useLocale();
   return (
     <section className="existing-links" aria-labelledby="existing-links-title">
       <h2 id="existing-links-title">{heading}</h2>
       {links.length === 0 ? <p className="muted">{emptyMessage}</p> : (
         <div className="builder-link-grid">
           {links.map((link) => (
-            <button key={link.id} type="button" className={`workspace-slot link-item builder-link${draggedId === link.id ? ' is-sortable-source' : ''}`} title={link.title} aria-label={`${selectedIds.includes(link.id) ? 'Remove' : 'Add'} ${link.title} ${selectedIds.includes(link.id) ? 'from' : 'to'} project`} aria-pressed={selectedIds.includes(link.id)} disabled={disabled} {...getDragHandlers(link.id)} onClick={() => { if (!draggedId) onSelect(link); }}>
+            <button key={link.id} type="button" className={`workspace-slot link-item builder-link${draggedId === link.id ? ' is-sortable-source' : ''}`} title={link.title} aria-label={t(selectedIds.includes(link.id) ? "Remove {0} from project" : "Add {0} to project", { 0: link.title })} aria-pressed={selectedIds.includes(link.id)} disabled={disabled} {...getDragHandlers(link.id)} onClick={() => { if (!draggedId) onSelect(link); }}>
               <LinkItemContent key={link.url} title={link.title} url={link.url} />
               <span className="builder-selection" aria-hidden="true">{selectedIds.includes(link.id) ? '−' : '+'}</span>
             </button>

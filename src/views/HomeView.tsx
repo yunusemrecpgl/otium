@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { OtiumData } from '../domain/data';
@@ -32,6 +33,7 @@ import { FolderNavigation } from '../components/FolderNavigation';
 import { getFolderPath } from '../utils/folderHierarchy';
 
 interface HomeViewProps {
+  revealState: RefObject<boolean>;
   data: OtiumData;
   theme: Theme;
   onToggleTheme: () => void;
@@ -47,6 +49,7 @@ interface HomeViewProps {
 }
 
 export function HomeView(props: HomeViewProps) {
+  useLocale();
   const room = useWorkspaceTransition();
   const root = useRef<HTMLElement>(null);
   const navigation = useRef<HTMLDivElement>(null);
@@ -84,10 +87,18 @@ export function HomeView(props: HomeViewProps) {
 }
 
 function WorkspaceCanvas({ data, theme, onToggleTheme, onOpenProject, onAdd, onMove, onMoveBatch, onCreateFolder, onTransfer, onTrash, onUpdateFolder, onFlushFolderEdits,
-  containerId, phase, onNavigate, root, navigationHeight, onDestinationPreview }: HomeViewProps & {
+  revealState, containerId, phase, onNavigate, root, navigationHeight, onDestinationPreview }: HomeViewProps & {
     containerId: string; phase: 'idle' | 'out' | 'in'; onNavigate: (id: string) => void;
     root: RefObject<HTMLElement | null>; navigationHeight: number; onDestinationPreview: (id: string | null) => void;
   }) {
+  useLocale();
+  const [revealing, setRevealing] = useState(() => containerId === 'home' && !revealState.current);
+  useLayoutEffect(() => { if (revealing) revealState.current = true; }, [revealing, revealState]);
+  useEffect(() => {
+    if (!revealing) return;
+    const timer = window.setTimeout(() => setRevealing(false), 140);
+    return () => window.clearTimeout(timer);
+  }, [revealing]);
   const [modalOpen, setModalOpen] = useState(false);
   const [folderModalOpen, setFolderModalOpen] = useState(false);
   const [openError, setOpenError] = useState<string | null>(null);
@@ -154,12 +165,14 @@ function WorkspaceCanvas({ data, theme, onToggleTheme, onOpenProject, onAdd, onM
   }
   return (
     <>
-    <div className="workspace-utilities" aria-label="Workspace utilities">
+    <div className="workspace-utilities" aria-label={t("Workspace utilities")}>
       <ThemeToggle theme={theme} onToggle={onToggleTheme} />
       <ArrangeButton onArrange={() => { void arrange(); }} disabled={arranging || phase !== 'idle' || transfer.dragActive || !workspaceItems.length} />
     </div>
-    <main className={`workspace${selection.marquee ? ' is-selecting' : ''}`} aria-label={containerId === 'home' ? 'Otium workspace' : `${folders.get(containerId)?.name.trim() || 'Folder'} workspace`}
-      data-room-phase={phase} style={{ minHeight: Math.max(viewport.height, projection.contentHeight, insertionPreview?.contentHeight ?? 0) }} {...selection.handlers}>
+    <main className={`workspace${selection.marquee ? ' is-selecting' : ''}`} aria-label={containerId === 'home' ? t("Otium workspace") : t("{0} workspace", { 0: folders.get(containerId)?.name.trim() || 'Folder' })}
+      data-room-phase={phase} data-home-reveal={revealing || undefined} style={{ minHeight: projection.contentHeight > viewport.height || (insertionPreview?.contentHeight ?? 0) > viewport.height
+        ? Math.max(projection.contentHeight, insertionPreview?.contentHeight ?? 0)
+        : `calc(100dvh - ${navigationHeight}px)` }} {...selection.handlers}>
       <AddButton onClick={() => setModalOpen(true)} />
       {workspaceItems.map((item) => {
         switch (item.type) {
@@ -189,7 +202,7 @@ function WorkspaceCanvas({ data, theme, onToggleTheme, onOpenProject, onAdd, onM
       {groupPreview?.target && <div className="workspace-slot drop-preview group-drop-preview" style={groupPreview.target} aria-hidden="true" />}
       {selection.marquee && <div className="workspace-marquee" style={selection.marquee} aria-hidden="true" />}
       {openError && <p className="workspace-error" role="alert">{openError}</p>}
-      {unplaced && <p className="workspace-projection-notice" role="status">Window is too narrow to show every item. Widen it to access the remaining items.</p>}
+      {unplaced && <p className="workspace-projection-notice" role="status">{t("Window is too narrow to show every item. Widen it to access the remaining items.")}</p>}
       {modalOpen && <AddLinkModal onClose={() => setModalOpen(false)} onAdd={link => onAdd(link, containerId)}
         onCreateFolder={() => { setModalOpen(false); setFolderModalOpen(true); }} />}
       {folderModalOpen && <CreateFolderModal onClose={() => setFolderModalOpen(false)} onCreate={draft => onCreateFolder(draft, containerId)} />}

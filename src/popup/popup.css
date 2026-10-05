@@ -1,6 +1,11 @@
 html, body, #root { width: 340px; height: auto; max-height: 480px; }
+html { color-scheme: light; background: #fafafa; }
+@media (prefers-color-scheme: dark) { html { color-scheme: dark; background: #191919; } }
 .otium-popup { width: 340px; height: auto; min-height: 160px; max-height: 480px; overflow-y: auto; padding: 16px; font-size: 13px; }
 .popup-page-preview { display: flex; align-items: center; gap: 14px; padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--color-item-border); }
+.popup-management { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+.popup-permission-hint { padding: 10px; border: 1px solid var(--color-item-border); border-radius: 7px; margin-bottom: 6px; }
+.popup-permission-hint p { margin: 0 0 8px; color: var(--color-text-secondary); line-height: 1.5; font-size: 12px; }
 .popup-page-text { flex: 1; min-width: 0; }
 .popup-page-text h1 { margin: 0 0 6px; font-size: 15px; font-weight: 500; }
 .popup-page-text p { margin: 0; font-size: 12px; color: var(--color-text-secondary); }
@@ -8,8 +13,11 @@ html, body, #root { width: 340px; height: auto; max-height: 480px; }
 .popup-page-preview > .link-icon { flex: 0 0 32px; }
 .popup-actions, .popup-destinations { display: flex; flex-direction: column; gap: 6px; }
 .popup-row, .popup-folder-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; border: 1px solid var(--color-item-border); border-radius: 7px; color: var(--color-text-primary); background: transparent; }
-.popup-row { padding: 10px; text-align: left; cursor: pointer; }
-.popup-row > span:not(.project-color-swatch) { flex: 1; min-width: 0; }
+.popup-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 20px; padding: 10px; text-align: left; cursor: pointer; }
+.popup-row > span:not(.project-color-swatch):not(.folder-icon-slot) { min-width: 0; grid-column: 2; }
+.popup-row > .folder-icon-slot { width: 20px; height: 20px; overflow: visible; grid-column: 1; }
+.popup-row > svg:first-child { grid-column: 1; }
+.popup-row > svg:last-child:not(:first-child) { grid-column: 3; justify-self: end; }
 .popup-row svg, .popup-back svg, .popup-folder-row svg, .popup-section-title svg { flex-shrink: 0; width: 20px; height: 20px; stroke-width: 1.6; }
 .popup-row:hover:not(:disabled), .popup-folder-row:hover { background: var(--color-control-hover); }
 .otium-popup button:disabled { cursor: default; opacity: .65; }
@@ -17,9 +25,9 @@ html, body, #root { width: 340px; height: auto; max-height: 480px; }
 .popup-back { display: flex; align-items: center; gap: 3px; padding: 5px 0; border: 0; background: transparent; color: var(--color-text-secondary); cursor: pointer; }
 .popup-section-title { display: flex; align-items: center; gap: 8px; margin: 12px 0; font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
 .popup-new-folder { margin: 8px 0; }
-.popup-folder-row { padding: 3px; }
+.popup-folder-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 34px; padding: 3px; }
 .popup-folder-icon, .popup-folder-enter { display: grid; place-items: center; flex: 0 0 34px; min-height: 36px; padding: 4px; border: 0; border-radius: 5px; color: var(--color-text-secondary); background: transparent; cursor: pointer; }
 .popup-folder-name { flex: 1; min-width: 0; min-height: 28px; line-height: 28px; cursor: text; }
-.popup-folder-input { flex: 1; width: 0; min-width: 0; padding: 6px; border: 1px solid var(--color-input-border); border-radius: 5px; color: var(--color-text-primary); background: var(--color-input-background); font: inherit; }
+.popup-folder-input { width: 100%; min-width: 0; padding: 6px; border: 1px solid var(--color-input-border); border-radius: 5px; color: var(--color-text-primary); background: var(--color-input-background); font: inherit; }
 .popup-row .project-color-swatch { flex: 0 0 20px; width: 20px; height: 20px; cursor: inherit; }
 .otium-popup .form-error { margin: 12px 0 0; font-size: 12px; line-height: 1.5; }

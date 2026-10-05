@@ -1,3 +1,4 @@
+import { t, useLocale } from "../../i18n";
 import type { ComponentType } from 'react';
 import type { ProjectCanvasItem } from '../../domain/projectCanvasItem';
 import type { WidgetInstance } from '../../domain/widget';
@@ -31,15 +32,17 @@ export function inspectorWidgetName(type: string): string | undefined {
   return widgetEditors[type]?.name ?? portalEditors[type];
 }
 export function ProjectInspectorContent({ item, instance, disabled, onUpdate, onPreview, webDataStatus, onPortalTarget }: ProjectInspectorProps) {
+  useLocale();
   if (item?.type !== 'widget' || !instance) return null;
   const editor = widgetEditors[instance.type];
   return editor ? <editor.Editor key={instance.id} instance={instance} disabled={disabled} onUpdate={onUpdate} onPreview={onPreview} webDataStatus={webDataStatus} />
-    : portalEditors[instance.type] ? <div ref={onPortalTarget} /> : <p className="muted">No properties available for this widget.</p>;
+    : portalEditors[instance.type] ? <div ref={onPortalTarget} /> : <p className="muted">{t("No properties available for this widget.")}</p>;
 }
 // Retained for future non-widget properties; widget selection uses the floating shell.
 export function ProjectInspector(props: ProjectInspectorProps) {
+  useLocale();
   if (props.item?.type !== 'widget' || !props.instance) return null;
-  return <aside className="project-inspector" aria-label="Project Inspector">
+  return <aside className="project-inspector" aria-label={t("Project Inspector")}>
     <header>{inspectorWidgetName(props.instance.type) ?? 'Widget'}</header>
     <ProjectInspectorContent {...props} />
   </aside>;

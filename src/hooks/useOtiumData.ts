@@ -20,7 +20,7 @@ import { updateWorkspacePositions } from '../services/workspacePositions';
 import type { FolderDraft, FolderPatch } from '../domain/folder';
 import { createFolder as buildFolder, setFolderColor as changeFolderColor, transferWorkspaceItems, updateFolder as changeFolder } from '../services/folders';
 import { GRID_SIZE, WORKSPACE_PADDING } from '../constants/grid';
-import { trashWorkspaceItems, restoreTrashEntry } from '../services/trash';
+import { trashWorkspaceItems, restoreTrashEntry, emptyTrash as permanentlyEmptyTrash } from '../services/trash';
 import type { TrashTarget } from '../services/trash';
 import { getFolderPath } from '../utils/folderHierarchy';
 import type { BookmarkImportRequest, BookmarkImportSummary } from '../domain/importedBookmarks';
@@ -28,6 +28,7 @@ import { importBookmarks as buildBookmarkImport } from '../services/bookmarkImpo
 import { RepeatedBookmarkImportError } from '../services/bookmarkImportSafety';
 import { ensureProjectCanvasLinks, ensureProjectCanvasState, moveProjectCanvasLink, moveProjectCanvasGroup, resizeProjectCanvasItem as changeCanvasSize, setProjectCanvasZoom as changeCanvasZoom } from '../services/projectCanvas';
 import type { ProjectCanvasZoom } from '../domain/projectCanvasState';
+import { assertWidgetCreationAccess } from '../services/widgetCapabilities';
 
 const emptyData: OtiumData = {
   schemaVersion: 2, links: [], projects: [], folders: [], workspaceItems: [], projectCanvasItems: [], projectCanvasStates: [], widgetInstances: [], settings: DEFAULT_SETTINGS,
@@ -232,7 +233,7 @@ export function useOtiumData() {
     await mutate(latest => moveProjectCanvasLink(latest, projectId, id, x, y));
   }
   async function addProjectWidget(projectId: string, type: 'note' | 'todo' | 'resource' | 'web-data' | 'clip' | 'compare' | 'rss' | 'formula' | 'page-watch' | 'text', position: { x: number; y: number }) {
-    await mutate(latest => buildWidget(latest, projectId, type, position));
+    await mutate(async latest => { await assertWidgetCreationAccess(latest, type); return buildWidget(latest, projectId, type, position); });
   }
   async function updateProjectWidget(id: string, config: ProjectWidgetConfig) {
     await mutate(latest => changeWidget(latest, id, config));
@@ -242,7 +243,14 @@ export function useOtiumData() {
   }
   async function duplicateProjectCanvasItem(projectId: string, id: string, config?: ProjectWidgetConfig) {
     let newId = '';
-    await mutate(latest => { const duplicate = copyCanvasItem(latest, projectId, id, config); newId = duplicate.id; return duplicate.data; });
+    await mutate(async latest => {
+      const item = latest.projectCanvasItems.find(item => item.id === id && item.projectId === projectId);
+      if (item?.type === 'widget') {
+        const instance = latest.widgetInstances.find(instance => instance.id === item.referenceId);
+        if (instance) await assertWidgetCreationAccess(latest, instance.type);
+      }
+      const duplicate = copyCanvasItem(latest, projectId, id, config); newId = duplicate.id; return duplicate.data;
+    });
     return newId;
   }
   async function moveProjectCanvasItems(projectId: string, ids: string[], anchorId: string, dx: number, dy: number) {
@@ -298,6 +306,9 @@ export function useOtiumData() {
   async function trashItems(ids: string[]) {
     await mutate(latest => trashWorkspaceItems(latest, ids));
   }
+  async function emptyTrash() {
+    await mutate(latest => permanentlyEmptyTrash(latest));
+  }
   async function restoreItem(target: TrashTarget | string) {
     await mutate(latest => restoreTrashEntry(latest, target, getWorkspaceGeometry(latest.settings.appearance.itemSize)));
   }
@@ -312,6 +323,6 @@ export function useOtiumData() {
 
   return { data, projects: getProjects(data), ready, bootStatus, error: loadError || saveError, loadError, retryLoad,
     setAppearance, flushSettings, addLink, moveItem, moveItems, createProject, updateProject, setProjectColor,
-    createFolder, setFolderColor, updateFolder, transferItems, trashItems, restoreItem, importBookmarks, addProjectToHome, deleteProject,
+    createFolder, setFolderColor, updateFolder, transferItems, trashItems, restoreItem, emptyTrash, importBookmarks, addProjectToHome, deleteProject,
     ensureProjectCanvas, moveProjectCanvasItem, setProjectCanvasZoom, resizeProjectCanvasItem, moveProjectCanvasItems, addProjectWidget, updateProjectWidget, trashProjectCanvasItems, duplicateProjectCanvasItem };
 }

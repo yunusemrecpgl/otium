@@ -1,3 +1,4 @@
+import { t, useLocale } from "../i18n";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Folder } from '../domain/folder';
 import { FolderIcon } from './FolderIcon';
@@ -13,6 +14,7 @@ interface Props {
 interface Snapshot { rect: DOMRect; node: HTMLButtonElement }
 
 export function FolderNavigation({ path, roots, containerId, target, disabled, onNavigate }: Props) {
+  useLocale();
   const nav = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(0);
   const breadcrumb = path.length > 1;
@@ -80,19 +82,19 @@ export function FolderNavigation({ path, roots, containerId, target, disabled, o
   function destination(folder: Pick<Folder, 'id' | 'name' | 'icon'>, menu = false) {
     const label = folder.name.trim() || `${folder.icon} folder`;
     return <button type="button" key={folder.id} data-nav-id={menu ? undefined : folder.id} data-destination-id={folder.id}
-      className={target === folder.id ? 'is-transfer-target' : ''} aria-label={`Go to ${label}`} title={label}
+      className={target === folder.id ? 'is-transfer-target' : ''} aria-label={t("Go to {0}", { 0: label })} title={label}
       aria-current={folder.id === containerId ? 'page' : undefined} disabled={disabled} onClick={event => {
         if (menu) event.currentTarget.closest('details')?.removeAttribute('open');
         onNavigate(folder.id);
       }}><FolderIcon icon={folder.icon} />{folder.name.trim() && <span>{folder.name}</span>}</button>;
   }
-  return <nav ref={nav} className={`folder-navigation${breadcrumb ? ' is-breadcrumb' : ''}`} aria-label={breadcrumb ? 'Folder breadcrumb' : 'Workspace destinations'}>
+  return <nav ref={nav} className={`folder-navigation${breadcrumb ? ' is-breadcrumb' : ''}`} aria-label={breadcrumb ? t("Folder breadcrumb") : t("Workspace destinations")}>
     {destination({ id: 'home', name: 'Home', icon: 'home' })}
-    {collapsed.length > 0 && visible.length === 1 && <><span className="breadcrumb-separator" aria-hidden="true">›</span><details className="breadcrumb-overflow"><summary aria-label="More ancestors">…</summary><div>{collapsed.map(folder => destination(folder, true))}</div></details></>}
+    {collapsed.length > 0 && visible.length === 1 && <><span className="breadcrumb-separator" aria-hidden="true">›</span><details className="breadcrumb-overflow"><summary aria-label={t("More ancestors")}>…</summary><div>{collapsed.map(folder => destination(folder, true))}</div></details></>}
     {visible.map((folder, index) => <Fragment key={folder.id}>
       {breadcrumb && <span className="breadcrumb-separator" aria-hidden="true">›</span>}
       {destination(folder)}
-      {collapsed.length > 0 && visible.length > 1 && index === 0 && <><span className="breadcrumb-separator" aria-hidden="true">›</span><details className="breadcrumb-overflow"><summary aria-label="More ancestors">…</summary><div>{collapsed.map(ancestor => destination(ancestor, true))}</div></details></>}
+      {collapsed.length > 0 && visible.length > 1 && index === 0 && <><span className="breadcrumb-separator" aria-hidden="true">›</span><details className="breadcrumb-overflow"><summary aria-label={t("More ancestors")}>…</summary><div>{collapsed.map(ancestor => destination(ancestor, true))}</div></details></>}
     </Fragment>)}
   </nav>;
 }
