@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Otium",
-  "description": "A minimal personal workspace for your new tab.",
-  "version": "0.1.0",
+  "description": "A local-first browser workspace for organizing links, projects, notes, web data, and more from your new tab.",
+  "version": "0.1.1",
   "icons": {
     "16": "otium-logo.png",
     "32": "otium-logo.png",

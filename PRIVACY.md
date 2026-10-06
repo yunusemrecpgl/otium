@@ -65,4 +65,14 @@ locally rather than upload it. Raw recovery exports may include current data,
 snapshots, legacy data and data preserved by a restore. Exports can contain
 private notes, captured text and full URLs; share them only intentionally.
 
+## Chrome Web Store Limited Use
+
+Otium's use of information received from Chrome APIs complies with the
+Chrome Web Store User Data Policy, including the Limited Use requirements.
+
+Otium uses user data only to provide its disclosed browser-workspace
+features. Otium does not sell user data, use it for advertising or
+creditworthiness purposes, or transfer it to third parties for unrelated
+purposes.
+
 See [Permissions](PERMISSIONS.md) for access controls and reasons.
