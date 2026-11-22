@@ -1,30 +1,9 @@
 import type { ImportedBookmarkNode, BookmarkImportSummary } from '../domain/importedBookmarks';
-import { normalizeUrl } from '../utils/url';
 import { BOOKMARK_IMPORT_LIMITS, BOOKMARK_IMPORT_TOO_LARGE } from '../constants/bookmarkImport';
-import { assertBookmarkCounts, boundBookmarkTitle, yieldBookmarkImport } from './bookmarkImportSafety';
+import { assertBookmarkCounts, boundBookmarkTitle, normalizeImportedBookmark, summarizeBookmarks, yieldBookmarkImport } from './bookmarkImportSafety';
 
 const ROOT_NAMES = new Set(['bookmarks bar', 'bookmarks toolbar', 'other bookmarks', 'mobile bookmarks', 'bookmarks menu']);
 const ROOT_ATTRIBUTES = ['personal_toolbar_folder', 'unfiled_bookmarks_folder', 'mobile_bookmarks_folder', 'bookmarks_menu'];
-
-export function summarizeBookmarks(nodes: readonly ImportedBookmarkNode[]): BookmarkImportSummary {
-  const summary = { bookmarks: 0, folders: 0 };
-  if (nodes.length > BOOKMARK_IMPORT_LIMITS.nodes) throw new Error(BOOKMARK_IMPORT_TOO_LARGE);
-  const pending = [...nodes];
-  const visited = new Set<ImportedBookmarkNode>();
-  while (pending.length) {
-    const node = pending.pop()!;
-    if (visited.has(node)) throw new Error('Invalid bookmark hierarchy.');
-    visited.add(node);
-    if (node.type === 'folder') {
-      summary.folders++;
-      if (visited.size + pending.length + node.children.length > BOOKMARK_IMPORT_LIMITS.nodes) throw new Error(BOOKMARK_IMPORT_TOO_LARGE);
-      for (const child of node.children) pending.push(child);
-    }
-    else summary.bookmarks++;
-    assertBookmarkCounts(summary);
-  }
-  return summary;
-}
 
 export async function parseBookmarkHtml(html: string): Promise<{ nodes: ImportedBookmarkNode[]; summary: BookmarkImportSummary }> {
   if (new TextEncoder().encode(html).byteLength > BOOKMARK_IMPORT_LIMITS.fileBytes) throw new Error('Bookmark file is too large.');
@@ -39,7 +18,7 @@ export async function parseBookmarkHtml(html: string): Promise<{ nodes: Imported
   const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT);
   let elements = 0;
   while (walker.nextNode()) {
-    if (++elements > BOOKMARK_IMPORT_LIMITS.htmlElements) throw new Error(BOOKMARK_IMPORT_TOO_LARGE);
+    if (++elements > BOOKMARK_IMPORT_LIMITS.sourceEntries) throw new Error(BOOKMARK_IMPORT_TOO_LARGE);
     if (elements % BOOKMARK_IMPORT_LIMITS.batchSize === 0) await yieldBookmarkImport();
   }
   const headers = [...root.querySelectorAll('h3')].filter(header => header.closest('dl') === root);
@@ -73,13 +52,10 @@ export async function parseBookmarkHtml(html: string): Promise<{ nodes: Imported
         break;
       }
       case 'A': {
-        const href = element.getAttribute('href') ?? '';
-        if (href.length > BOOKMARK_IMPORT_LIMITS.urlCharacters) throw new Error('A bookmark URL is too long.');
-        const url = normalizeUrl(href);
-        if (url) {
-          if (url.length > BOOKMARK_IMPORT_LIMITS.urlCharacters) throw new Error('A bookmark URL is too long.');
+        const bookmark = normalizeImportedBookmark(element.textContent ?? '', element.getAttribute('href') ?? '');
+        if (bookmark) {
           summary.bookmarks++; assertBookmarkCounts(summary);
-          context.nodes.push({ type: 'bookmark', title: boundBookmarkTitle((element.textContent ?? '').trim() || url), url });
+          context.nodes.push(bookmark);
         }
         context.pendingChildren = null;
         break;

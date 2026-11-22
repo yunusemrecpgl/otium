@@ -1,5 +1,5 @@
-import { normalizeTextStyle, isTextConfig } from '../../domain/text';
-import { isPageWatchConfig, migratePageWatchConfig } from '../../domain/pageWatch';
+import { isTextConfig } from '../../domain/text';
+import { isPageWatchConfig } from '../../domain/pageWatch';
 import { isFormulaConfig } from '../../domain/formula';
 import type { OtiumData } from '../../domain/data';
 import type { BookmarkImportMetadata } from '../../domain/importedBookmarks';
@@ -16,17 +16,17 @@ import { isWebDataConfig } from '../../domain/webData';
 import { isClipConfig } from '../../domain/clip';
 import { isCompareConfig } from '../../domain/compare';
 import { isRssConfig } from '../../domain/rss';
-import { normalizeFolderIcon } from '../../utils/folderIcons';
 import type { Folder } from '../../domain/folder';
 import { isProjectColor } from '../../domain/projectColor';
 import { DEFAULT_SETTINGS, normalizeItemSize } from '../../domain/settings';
 import type { UserSettings } from '../../domain/settings';
 import { normalizeUrl } from '../../utils/url';
-import { preserveWidgetConfig } from '../widgetConfig';
 import { browserLocale, isLocale } from '../../i18n/locale';
+import { parseNotebook } from '../../domain/notebook';
 
 export const STORAGE_KEY = 'persistentData';
-export const SCHEMA_VERSION = 2;
+export const LEGACY_WORKSPACE_SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -43,16 +43,22 @@ export function parseSettings(value: unknown, oldTheme?: unknown): UserSettings 
   const settings = record(value);
   const appearance = record(settings?.appearance);
   const capabilities = record(settings?.widgetCapabilities);
-  const widgetCapabilities = capabilities ? Object.fromEntries(Object.entries(capabilities).flatMap(([type, state]) => {
-    const entry = record(state);
-    return typeof entry?.enabled === 'boolean' ? [[type, { enabled: entry.enabled }]] : [];
-  })) : undefined;
   const size = appearance?.itemSize;
-  const theme = appearance?.theme ?? oldTheme;
+  const language = appearance?.language;
+  const theme = appearance?.theme === undefined ? oldTheme : appearance.theme;
+  if ((value !== undefined && !settings) || (settings?.appearance !== undefined && !appearance) ||
+      (settings?.widgetCapabilities !== undefined && !capabilities) ||
+      (language !== undefined && !isLocale(language)) ||
+      (size !== undefined && (typeof size !== 'number' || !Number.isFinite(size))) ||
+      (theme !== undefined && theme !== 'light' && theme !== 'dark' && theme !== 'system') ||
+      (capabilities && Object.values(capabilities).some(state => typeof record(state)?.enabled !== 'boolean'))) {
+    throw new Error('Stored settings are invalid. Original data has been preserved.');
+  }
   return {
-    ...(widgetCapabilities ? { widgetCapabilities } : {}),
+    ...settings,
     appearance: {
-      language: isLocale(appearance?.language) ? appearance.language : browserLocale(),
+      ...appearance,
+      language: isLocale(language) ? language : browserLocale(),
       itemSize: normalizeItemSize(size),
       theme: theme === 'light' || theme === 'dark' || theme === 'system'
         ? theme : DEFAULT_SETTINGS.appearance.theme,
@@ -75,11 +81,14 @@ function parseLinks(value: unknown): Link[] {
     if (!link || typeof link.id !== 'string' || !link.id || ids.has(link.id) ||
         typeof link.title !== 'string' || !link.title.trim() ||
         typeof link.url !== 'string' || !normalizeUrl(link.url) ||
-        typeof link.createdAt !== 'number' || !Number.isFinite(link.createdAt)) {
+        typeof link.createdAt !== 'number' || !Number.isFinite(link.createdAt) ||
+        (link.updatedAt !== undefined && (typeof link.updatedAt !== 'number' || !Number.isFinite(link.updatedAt))) ||
+        (link.projectId !== undefined && (typeof link.projectId !== 'string' || !link.projectId))) {
       throw new Error('Stored links contain invalid or duplicate records. Original data has been preserved.');
     }
     ids.add(link.id);
     return {
+      ...link,
       id: link.id, title: link.title, url: link.url, createdAt: link.createdAt,
       ...(typeof link.updatedAt === 'number' ? { updatedAt: link.updatedAt } : {}),
       ...(typeof link.projectId === 'string' ? { projectId: link.projectId } : {}),
@@ -99,7 +108,7 @@ function parseItems(value: unknown, links: Link[]): WorkspaceItem[] {
     ids.add(item.id);
     const containerId = item.containerId === undefined ? 'home' : item.containerId;
     if (typeof containerId !== 'string' || !containerId) throw new Error('Stored workspace container is invalid.');
-    const position = { id: item.id, containerId, x: item.x as number, y: item.y as number, ...trashMetadata(item) };
+    const position = { ...item, id: item.id, containerId, x: item.x as number, y: item.y as number, ...trashMetadata(item) };
     if (item.type === 'folder' && typeof item.folderId === 'string' && item.folderId) {
       return { ...position, type: 'folder', folderId: item.folderId };
     }
@@ -119,8 +128,12 @@ function parseItems(value: unknown, links: Link[]): WorkspaceItem[] {
 
 export function parseCurrentData(value: unknown): OtiumData {
   const data = record(value);
-  if (!data || data.schemaVersion !== SCHEMA_VERSION) {
+  if (!data || (data.schemaVersion !== SCHEMA_VERSION && data.schemaVersion !== LEGACY_WORKSPACE_SCHEMA_VERSION)) {
     throw new Error('Unsupported storage schema. Original data has been preserved.');
+  }
+  if (data.schemaVersion === SCHEMA_VERSION && (!record(data.settings) || !record(record(data.settings)?.appearance) ||
+      !['folders', 'projects', 'projectCanvasItems', 'projectCanvasStates', 'widgetInstances'].every(key => Array.isArray(data[key])))) {
+    throw new Error('This workspace file is incomplete or uses an unsupported schema.');
   }
   const links = parseLinks(data.links);
   const projects = parseProjects(data.projects, links);
@@ -128,6 +141,7 @@ export function parseCurrentData(value: unknown): OtiumData {
     throw new Error('A stored link references a missing project. Original data has been preserved.');
   }
   return {
+    ...data,
     schemaVersion: SCHEMA_VERSION, links, projects, folders: parseFolders(data.folders),
     workspaceItems: parseItems(data.workspaceItems, links),
     projectCanvasItems: parseProjectCanvasItems(data.projectCanvasItems),
@@ -135,6 +149,7 @@ export function parseCurrentData(value: unknown): OtiumData {
     widgetInstances: parseWidgetInstances(data.widgetInstances),
     settings: parseSettings(data.settings),
     ...(data.bookmarkImports === undefined ? {} : { bookmarkImports: parseBookmarkImports(data.bookmarkImports) }),
+    ...(data.notebook === undefined ? {} : { notebook: parseNotebook(data.notebook) }),
   };
 }
 
@@ -151,13 +166,13 @@ function parseBookmarkImports(value: unknown): BookmarkImportMetadata[] {
       throw new Error('Stored bookmark import metadata is invalid. Original data has been preserved.');
     }
     fingerprints.add(metadata.fingerprint);
-    return { fingerprint: metadata.fingerprint, importedAt: metadata.importedAt,
+    return { ...metadata, fingerprint: metadata.fingerprint, importedAt: metadata.importedAt,
       bookmarks: metadata.bookmarks as number, folders: metadata.folders as number };
   });
 }
 
 export function migrateLegacyData(values: Record<string, unknown>): OtiumData {
-  const legacy = values.links ?? [];
+  const legacy = values.links === undefined ? [] : values.links;
   const links = parseLinks(legacy);
   // IDs and grid coordinates remain unchanged; the sidebar is never included.
   const workspaceItems = parseItems((legacy as Record<string, unknown>[]).map((item) => ({
@@ -191,15 +206,9 @@ function parseWidgetInstances(value: unknown): WidgetInstance[] {
       throw new Error('Stored widgets are invalid. Original data has been preserved.');
     }
     ids.add(widget.id);
-    const stored = config as Record<string, WidgetConfigValue>;
-    const pageWatch = widget.type === 'page-watch' && isPageWatchConfig(config) ? migratePageWatchConfig(config) : null;
-    const { style: pageWatchStyle, ...pageWatchValues } = pageWatch ?? {};
-    const migrated = pageWatch ? preserveWidgetConfig('page-watch', stored,
-      { ...stored, ...pageWatchValues, fields: pageWatch.fields!.map(field => ({ ...field })),
-        ...(pageWatchStyle ? { style: { ...normalizeTextStyle(pageWatchStyle) } } : {}) } as Record<string, WidgetConfigValue>) : stored;
-    if (pageWatch) { delete migrated.currentValue; delete migrated.previousValue; delete migrated.lastChangedAt; }
-    return { id: widget.id, type: widget.type, version: pageWatch ? Math.max(widget.version as number, 4) : widget.version as number,
-      config: migrated,
+    // Page Watch reads legacy fields at runtime and upgrades on its own edits.
+    return { ...widget, id: widget.id, type: widget.type, version: widget.version as number,
+      config: config as Record<string, WidgetConfigValue>,
       createdAt: widget.createdAt, updatedAt: widget.updatedAt };
   });
 }
@@ -212,11 +221,12 @@ function parseProjectCanvasStates(value: unknown): ProjectCanvasState[] {
     const state = record(entry);
     if (!state || typeof state.projectId !== 'string' || !state.projectId || ids.has(state.projectId) ||
         typeof state.width !== 'number' || !Number.isFinite(state.width) || state.width <= 0 ||
-        typeof state.height !== 'number' || !Number.isFinite(state.height) || state.height <= 0) {
+        typeof state.height !== 'number' || !Number.isFinite(state.height) || state.height <= 0 ||
+        (state.zoom !== undefined && (typeof state.zoom !== 'number' || !Number.isFinite(state.zoom)))) {
       throw new Error('Stored Project canvas states contain invalid or duplicate records. Original data has been preserved.');
     }
     ids.add(state.projectId);
-    return { projectId: state.projectId, width: state.width, height: state.height, zoom: normalizeProjectCanvasZoom(state.zoom) };
+    return { ...state, projectId: state.projectId, width: state.width, height: state.height, zoom: normalizeProjectCanvasZoom(state.zoom) };
   });
 }
 
@@ -242,7 +252,7 @@ function parseFolders(value: unknown): Folder[] {
       typeof folder.createdAt !== 'number' || !Number.isFinite(folder.createdAt) ||
       typeof folder.updatedAt !== 'number' || !Number.isFinite(folder.updatedAt)) throw new Error('Stored folders are invalid. Original data has been preserved.');
     ids.add(folder.id);
-    return { id: folder.id, name: folder.name, icon: normalizeFolderIcon(folder.icon), color: folder.color,
+    return { ...folder, id: folder.id, name: folder.name, icon: folder.icon, color: folder.color,
       widthTier: folder.widthTier, createdAt: folder.createdAt, updatedAt: folder.updatedAt, ...trashMetadata(folder) };
   });
 }
@@ -264,6 +274,7 @@ function parseProjects(value: unknown, links: Link[]): Project[] {
         typeof project.name !== 'string' || !project.name.trim() ||
         typeof project.createdAt !== 'number' || !Number.isFinite(project.createdAt) ||
         typeof project.updatedAt !== 'number' || !Number.isFinite(project.updatedAt) ||
+        (project.color !== undefined && !isProjectColor(project.color)) ||
         !Array.isArray(project.linkIds) || new Set(project.linkIds).size !== project.linkIds.length ||
         project.linkIds.some((id) => typeof id !== 'string' || !id ||
           links.some((link) => link.id === id && link.projectId && link.projectId !== project.id))) {
@@ -271,6 +282,7 @@ function parseProjects(value: unknown, links: Link[]): Project[] {
     }
     ids.add(project.id);
     return {
+      ...project,
       id: project.id, name: project.name, linkIds: project.linkIds as string[],
       createdAt: project.createdAt, updatedAt: project.updatedAt,
       ...(isProjectColor(project.color) ? { color: project.color } : {}),

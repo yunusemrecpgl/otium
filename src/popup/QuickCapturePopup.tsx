@@ -1,7 +1,7 @@
 import { t } from "../i18n";
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { useEffect, useRef, useState } from 'react';
-import { Home, ChevronLeft, ChevronRight, Plus, Briefcase, Check, Quote } from 'lucide-react';
+import { Home, ChevronLeft, ChevronRight, Briefcase, Check, Quote } from 'lucide-react';
 import type { OtiumData } from '../domain/data';
 import { currentTabService } from '../services/currentTab';
 import type { CurrentPage } from '../services/currentTab';
@@ -17,7 +17,6 @@ import { widgetCapabilityService } from '../services/widgetCapabilities';
 import { browserTabsService } from '../services/browserTabs';
 import { setLocale } from '../i18n';
 
-interface Rename { id: string; name: string }
 
 function displayTitle(title: string) {
   const [first = '', ...rest] = Array.from(title);
@@ -31,14 +30,11 @@ export function QuickCapturePopup() {
   const [selection, setSelection] = useState<PageSelection | null>(null);
   const [projectCapture, setProjectCapture] = useState<'link' | 'selection'>('link');
   const [success, setSuccess] = useState<string | null>(null);
+  const [savedFolderId, setSavedFolderId] = useState<string | null>(null);
   const [view, setView] = useState<'main' | 'folders' | 'projects'>('main');
-  const [containerId, setContainerId] = useState('home');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [rename, setRename] = useState<Rename | null>(null);
-  const renameRef = useRef<Rename | null>(null);
-  const nameInput = useRef<HTMLInputElement>(null);
   const pending = useRef(false);
   const notificationVersion = useRef(0), operationVersion = useRef(0);
   function acceptResult(next: OtiumData) {
@@ -77,7 +73,6 @@ export function QuickCapturePopup() {
     if (clipAvailable && page) void selectedTextService.read().then(value => { if (active) setSelection(value); });
     return () => { active = false; };
   }, [clipAvailable, page?.url]);
-  useEffect(() => { if (rename) { nameInput.current?.focus(); nameInput.current?.select(); } }, [rename?.id]);
 
   async function run(operation: () => Promise<void>) {
     if (pending.current) return;
@@ -87,36 +82,29 @@ export function QuickCapturePopup() {
     catch (cause) { setError(cause instanceof Error ? cause.message : 'The page could not be saved.'); }
     finally { pending.current = false; setBusy(false); }
   }
-  function beginRename(id: string, name: string) {
-    const edit = { id, name };
-    renameRef.current = edit; setRename(edit);
-  }
-  function commitName() {
-    const edit = renameRef.current;
-    if (!edit || pending.current) return;
-    renameRef.current = null; setRename(null);
-    void run(async () => { acceptResult(await quickCaptureService.renameFolder(edit.id, edit.name)); });
-  }
-  const disabled = busy || loading || !data || !page;
-  const path = data ? getFolderPath(data, containerId) : null;
-  const currentFolder = path?.at(-1);
-  const folderIds = new Set(data?.workspaceItems.flatMap(item => item.type === 'folder' && !item.trashedAt && item.containerId === containerId ? [item.folderId] : []) ?? []);
-  const folders = data?.folders.filter(folder => !folder.trashedAt && folderIds.has(folder.id) && getFolderPath(data, folder.id)) ?? [];
+  useEffect(() => {
+    if (!savedFolderId) return;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const timer = window.setTimeout(() => {
+      setSavedFolderId(null);
+      setView('main');
+    }, reducedMotion ? 250 : 600);
+    return () => window.clearTimeout(timer);
+  }, [savedFolderId]);
+
+  const disabled = busy || savedFolderId !== null || loading || !data || !page;
+  const folders = view === 'folders' && data ? data.folders.flatMap(folder => {
+    const path = getFolderPath(data, folder.id);
+    if (!path) return [];
+    const label = path.map(entry => entry.name.trim() || t('unnamed folder')).join(' / ');
+    const stops = path.map(entry => `var(--palette-${entry.color}-surface)`);
+    const background = stops.length === 1 ? stops[0] : `linear-gradient(to right, ${stops.join(', ')})`;
+    return [{ folder, path, label, background }];
+  }).sort((a, b) => a.label.localeCompare(b.label, data.settings.appearance.language)) : [];
   const projects = data?.projects.filter(project => !project.trashedAt) ?? [];
   const homeAdded = Boolean(data && page && isPageCaptured(data, page, { containerId: 'home' }));
-  const folderAdded = Boolean(data && page && isPageCaptured(data, page, { containerId }));
-
-  function navigateFolder(id: string) {
-    if (renameRef.current) return;
-    setContainerId(id);
-  }
-  function back() {
-    if (view === 'folders' && containerId !== 'home') setContainerId(path?.at(-2)?.id ?? 'home');
-    else setView('main');
-  }
-
   return <main className="otium-app otium-popup" data-theme={theme} aria-busy={loading || busy}>
-    <div className="popup-management"><button type="button" className="popup-back" disabled={busy} onClick={() => { void run(() => browserTabsService.openWidgets()); }}>{t("Widgets & permissions")}</button></div>
+    <div className="popup-management"><button type="button" className="popup-back" disabled={busy || savedFolderId !== null} onClick={() => { void run(() => browserTabsService.openWidgets()); }}>{t("Widgets & permissions")}</button></div>
     {page && <header className="popup-page-preview">
       <div className="popup-page-text">
         <h1 title={page.title}>{displayTitle(page.title)}</h1>
@@ -134,7 +122,7 @@ export function QuickCapturePopup() {
       <button type="button" className="popup-row" disabled={disabled || homeAdded} onClick={() => { void run(async () => { acceptResult(await quickCaptureService.addToHome(page!)); }); }}>
         <Home /><span>{homeAdded ? t("Added to Home") : t("Add to Home")}</span>{homeAdded && <Check />}
       </button>
-      <button type="button" className="popup-row" disabled={disabled} onClick={() => { setContainerId('home'); setView('folders'); }}>
+      <button type="button" className="popup-row" disabled={disabled} onClick={() => { setSuccess(null); setView('folders'); }}>
         <FolderIcon icon="folder" /><span>{t("Add to Folder")}</span><ChevronRight />
       </button>
       <button type="button" className="popup-row" disabled={disabled} onClick={() => { setProjectCapture('link'); setView('projects'); }}>
@@ -146,37 +134,34 @@ export function QuickCapturePopup() {
       </button>}
     </div>}
     {view !== 'main' && <>
-      <button type="button" className="popup-back" disabled={busy || Boolean(rename)} onClick={back}><ChevronLeft />{t("Back")}</button>
-      <h2 className="popup-section-title">{view === 'projects' ? t("Projects") : currentFolder ? <><FolderIcon icon={currentFolder.icon} />{currentFolder.name || t('Folders')}</> : t("Folders")}</h2>
+      <button type="button" className="popup-back" disabled={busy || savedFolderId !== null} onClick={() => setView('main')}><ChevronLeft />{t("Back")}</button>
+      <h2 className="popup-section-title">{view === 'projects' ? t("Projects") : t("Folders")}</h2>
     </>}
-    {view === 'folders' && <>
-      {containerId !== 'home' && <button type="button" className="popup-row" disabled={disabled || folderAdded || !path || Boolean(rename)} onClick={() => {
-        void run(async () => { acceptResult(await quickCaptureService.addToFolder(page!, containerId)); });
-      }}><Plus /><span>{folderAdded ? t("Added to this folder") : t("Add to this folder")}</span>{folderAdded && <Check />}</button>}
-      <button type="button" className="popup-row popup-new-folder" disabled={disabled || Boolean(rename)} onClick={() => {
-        void run(async () => {
-          const result = await quickCaptureService.createFolder(page!, containerId);
-          acceptResult(result.data); beginRename(result.folderId, 'New Folder');
-        });
-      }}><Plus /><span>{t("New Folder")}</span></button>
-      <div className="popup-destinations">
-        {folders.map(folder => <div key={folder.id} className="popup-folder-row">
-          <button type="button" className="popup-folder-icon" disabled={disabled || Boolean(rename)} aria-label={t("Open {0}", { 0: folder.name || t('unnamed folder') })} onClick={() => navigateFolder(folder.id)}>
-            <FolderIcon icon={folder.icon} />
-          </button>
-          {rename?.id === folder.id ? <input ref={nameInput} className="popup-folder-input" aria-label={t("Folder name")} maxLength={40} value={rename.name}
-            onChange={event => { const edit = { id: folder.id, name: event.target.value }; renameRef.current = edit; setRename(edit); }}
-            onBlur={commitName} onKeyDown={event => {
-              if (event.key === 'Enter') { event.preventDefault(); commitName(); }
-              if (event.key === 'Escape') { event.preventDefault(); renameRef.current = null; setRename(null); }
-            }} /> : <span className="popup-folder-name" role="button" tabIndex={busy ? -1 : 0} aria-label={t("Rename {0}", { 0: folder.name || 'unnamed folder' })}
-              title={folder.name || 'Unnamed folder'} onDoubleClick={() => { if (!busy) beginRename(folder.id, folder.name); }}
-              onKeyDown={event => { if (!busy && (event.key === 'Enter' || event.key === 'F2')) { event.preventDefault(); beginRename(folder.id, folder.name); } }}>{folder.name}</span>}
-          <button type="button" className="popup-folder-enter" disabled={disabled || Boolean(rename)} aria-label={t("Open {0}", { 0: folder.name || 'unnamed folder' })} onClick={() => navigateFolder(folder.id)}><ChevronRight /></button>
-        </div>)}
-        {!folders.length && <p className="muted">{t("No folders here.")}</p>}
-      </div>
-    </>}
+    {view === 'folders' && <div className="popup-destinations">
+      {folders.map(({ folder, path, label, background }) => {
+        const added = Boolean(data && page && isPageCaptured(data, page, { containerId: folder.id }));
+        const addedLabel = path.every(entry => entry.name.trim()) ? t('Added to {name}', { name: label }) : t('Added');
+        return <button key={folder.id} type="button" className="popup-row popup-folder-save" disabled={disabled || added}
+          data-save-success={savedFolderId === folder.id || undefined}
+          style={{ background }}
+          aria-label={added ? t('Added to {name}', { name: label }) : label}
+          onClick={() => { void run(async () => {
+            acceptResult(await quickCaptureService.addToFolder(page!, folder.id));
+            setSuccess(addedLabel);
+            setSavedFolderId(folder.id);
+          }); }}>
+          <span className="popup-folder-path" aria-hidden="true">
+            {path.map((entry, index) => <span className="popup-folder-segment" key={entry.id}>
+              {index > 0 && <span className="popup-folder-separator">/</span>}
+              <FolderIcon icon={entry.icon} />
+              {entry.name.trim() && <span className="popup-folder-segment-name" title={entry.name}>{entry.name}</span>}
+            </span>)}
+          </span>
+          {savedFolderId === folder.id && <Check className="popup-folder-success-check" aria-hidden="true" />}
+        </button>;
+      })}
+      {!folders.length && <p className="muted">{t("No folders here.")}</p>}
+    </div>}
     {view === 'projects' && <div className="popup-destinations">
       {projects.map(project => {
         const added = projectCapture === 'link' && Boolean(data && page && isPageCaptured(data, page, { projectId: project.id }));

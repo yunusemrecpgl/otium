@@ -30,6 +30,7 @@
   ],
   "optional_permissions": [
     "favicon",
-    "scripting"
+    "scripting",
+    "bookmarks"
   ]
 }

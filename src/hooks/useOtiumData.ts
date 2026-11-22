@@ -1,3 +1,4 @@
+import { createProjectDraft } from '../services/projectDraft';
 import { trashProjectCanvasItems as removeCanvasItems } from '../services/projectCanvasTrash';
 import { duplicateProjectCanvasItem as copyCanvasItem } from '../services/projectCanvasDuplicate';
 import { addProjectWidget as buildWidget, updateProjectWidget as changeWidget } from '../services/projectWidgets';
@@ -29,9 +30,10 @@ import { RepeatedBookmarkImportError } from '../services/bookmarkImportSafety';
 import { ensureProjectCanvasLinks, ensureProjectCanvasState, moveProjectCanvasLink, moveProjectCanvasGroup, resizeProjectCanvasItem as changeCanvasSize, setProjectCanvasZoom as changeCanvasZoom } from '../services/projectCanvas';
 import type { ProjectCanvasZoom } from '../domain/projectCanvasState';
 import { assertWidgetCreationAccess } from '../services/widgetCapabilities';
+import { isProjectCanvasPlacement } from '../services/projectCanvasValidation';
 
 const emptyData: OtiumData = {
-  schemaVersion: 2, links: [], projects: [], folders: [], workspaceItems: [], projectCanvasItems: [], projectCanvasStates: [], widgetInstances: [], settings: DEFAULT_SETTINGS,
+  schemaVersion: 3, links: [], projects: [], folders: [], workspaceItems: [], projectCanvasItems: [], projectCanvasStates: [], widgetInstances: [], settings: DEFAULT_SETTINGS,
 };
 
 type BootState = { data: OtiumData; status: 'loading' | 'ready' | 'error'; loadError: string | null };
@@ -222,8 +224,14 @@ export function useOtiumData() {
       return { ...latest, workspaceItems: latest.workspaceItems.map(entry => entry.id === id ? { ...entry, x: position.x, y: position.y } : entry) };
     });
   }
-  async function createProject(draft: ProjectDraft): Promise<Project> {
-    const next = await mutate(latest => buildProject(latest, draft).data);
+  async function createProject(baseName: string): Promise<Project> {
+    const draft = createProjectDraft();
+    const next = await mutate(latest => {
+      const names = new Set(latest.projects.map(project => project.name));
+      let name = baseName;
+      for (let suffix = 2; names.has(name); suffix++) name = baseName + '-' + suffix;
+      return buildProject(latest, { ...draft, name }).data;
+    });
     return next.projects.find(project => project.id === draft.id)!;
   }
   async function ensureProjectCanvas(projectId: string, viewport: { width: number; height: number }) {
@@ -244,7 +252,7 @@ export function useOtiumData() {
   async function duplicateProjectCanvasItem(projectId: string, id: string, config?: ProjectWidgetConfig) {
     let newId = '';
     await mutate(async latest => {
-      const item = latest.projectCanvasItems.find(item => item.id === id && item.projectId === projectId);
+      const item = latest.projectCanvasItems.find(item => isProjectCanvasPlacement(item) && item.id === id && item.projectId === projectId);
       if (item?.type === 'widget') {
         const instance = latest.widgetInstances.find(instance => instance.id === item.referenceId);
         if (instance) await assertWidgetCreationAccess(latest, instance.type);

@@ -16,6 +16,7 @@ and provides a browser action popup; neither adds a separate permission.
 | --- | --- |
 | `scripting` | Requested when you explicitly grant Clip capture access or choose Rendered Page Watch. Runs built-in selection/selector text-reading helpers with active-tab access or an approved origin; it does not itself grant website access or run user-supplied JavaScript. |
 | `favicon` | Use the browser's favicon endpoint for saved website/source icons. A first-run Website Icons step requests it only when you click Allow; Not now dismisses the step without blocking Otium. You can grant access later from Settings or Widgets. Without it, permitted alternatives or initial badges remain available. |
+| `bookmarks` | Requested when you choose direct browser bookmark import from first-run onboarding or Settings. Otium copies bookmark titles, URLs, and folder structure locally into your workspace. It never modifies or synchronizes the browser's bookmarks. |
 | Host patterns `https://*/*` and `http://*/*` | Declare which website origins Otium may ask you to approve for external-source widgets and rendered-page reads. These are **optional host permissions**, not required host permissions. |
 
 Broad website access is not granted at installation or requested at startup.
@@ -35,8 +36,8 @@ does not automatically request additional origins. Permissions can be declined
 or revoked through the browser's extension/site-access controls. Features then
 show an access/unavailable state or an icon fallback as applicable.
 
-The current manifest does not request `tabs`, `bookmarks`, clipboard,
-`contextMenus`, `webRequest` or `declarativeNetRequest` permissions. Bookmark
-import reads a file you choose, rather than the live bookmark database.
+The current manifest does not request `tabs`, clipboard, `contextMenus`,
+`webRequest` or `declarativeNetRequest` permissions. Exported HTML bookmark files
+can be imported without granting browser bookmark access.
 
 See [Privacy](PRIVACY.md) for what is stored and when remote sources are contacted.

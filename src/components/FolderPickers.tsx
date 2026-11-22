@@ -6,10 +6,18 @@ import type { ProjectColor } from '../domain/projectColor';
 
 const LucideIconPicker = lazy(() => import('./LucideIconPicker'));
 
-export function FolderIconPicker({ value, onChange, disabled }: { value: Icon; onChange: (icon: Icon) => void; disabled?: boolean }) {
+export interface FolderIconPickerProps {
+  value: Icon;
+  onChange: (icon: Icon) => void;
+  disabled?: boolean;
+  label?: string;
+  searchLabel?: string;
+}
+
+export function FolderIconPicker(props: FolderIconPickerProps) {
   useLocale();
   return <Suspense fallback={<p className="muted" role="status">{t("Loading icons…")}</p>}>
-    <LucideIconPicker value={value} onChange={onChange} disabled={disabled} />
+    <LucideIconPicker {...props} />
   </Suspense>;
 }
 export function FolderColorPicker({ value, onChange, disabled }: { value: ProjectColor; onChange: (color: ProjectColor) => void; disabled?: boolean }) {

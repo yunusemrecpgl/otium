@@ -3,7 +3,9 @@ import type { AppearanceSettings, ThemePreference } from '../domain/settings';
 import { ItemSizeControl } from '../components/settings/ItemSizeControl';
 import { BookmarkImport } from '../components/settings/BookmarkImport';
 import { AdvancedSiteIcons } from '../components/settings/AdvancedSiteIcons';
-import { DataRecovery } from '../components/settings/DataRecovery';
+import { WorkspaceImport } from '../components/settings/WorkspaceImport';
+import { exportWorkspace } from '../services/workspaceExport';
+import { useState } from 'react';
 import type { BookmarkImportRequest, BookmarkImportSummary } from '../domain/importedBookmarks';
 import { LANGUAGES } from '../i18n/locale';
 import type { Locale } from '../i18n/locale';
@@ -20,6 +22,7 @@ interface SettingsViewProps {
 
 export function SettingsView({ appearance, onChange, onCommit, disabled, onImport, onImportBusyChange }: SettingsViewProps) {
   useLocale();
+  const [exportError, setExportError] = useState('');
   return (
     <main className="secondary-view settings-view">
       <div className="settings-content">
@@ -49,11 +52,22 @@ export function SettingsView({ appearance, onChange, onCommit, disabled, onImpor
         <AdvancedSiteIcons disabled={disabled} />
       </section>
       <section aria-labelledby="data-heading">
-        <h2 id="data-heading">{t("Data & Recovery")}</h2>
-        <DataRecovery disabled={disabled} />
-      </section>
-      <section aria-labelledby="import-heading"><h2 id="import-heading">{t("Import")}</h2>
-        <BookmarkImport disabled={disabled} onImport={onImport} onBusyChange={onImportBusyChange} />
+        <h2 id="data-heading">{t("Data")}</h2>
+        <div className="settings-data-layout">
+        <section className="settings-data-card settings-data-bookmarks" aria-labelledby="data-bookmarks-title">
+          <BookmarkImport disabled={disabled} onImport={onImport} onBusyChange={onImportBusyChange} />
+        </section>
+        <WorkspaceImport disabled={disabled} onBusyChange={onImportBusyChange} />
+        <section className="settings-data-card settings-data-export" aria-labelledby="data-export-title">
+        <h3 id="data-export-title">{t('Export')}</h3>
+        <p className="muted">{t('Download your Otium workspace as a JSON file.')}</p>
+        <button type="button" className="quiet-button" disabled={disabled} onClick={() => {
+          setExportError('');
+          void exportWorkspace().catch(cause => setExportError(cause instanceof Error ? cause.message : String(cause)));
+        }}>{t('Export Otium Workspace')}</button>
+        {exportError && <p className="form-error" role="alert">{t(exportError)}</p>}
+        </section>
+        </div>
       </section>
       </div></div>
     </main>

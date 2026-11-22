@@ -47,10 +47,12 @@ Project; the resulting Clip stores working text, the original selection,
 source URL/title and available deep-link/favicon metadata. Page HTML is not
 stored by selection capture. There is no continuous selection monitoring.
 
-Bookmark import processes a browser-exported HTML file you select locally.
-Imported titles, URLs and folder structure are saved in the workspace, along
-with import summary/fingerprint metadata for repeated-import detection. Otium
-does not request access to the browser's live bookmark collection.
+Bookmark import processes an exported HTML file you select or copies bookmarks
+directly from your browser. Direct import requests optional bookmark access
+when you choose it. Bookmark titles, URLs, and folder structure are saved
+locally in the workspace, with import summary and fingerprint metadata for
+repeated-import detection. Otium reads browser bookmarks for that one-time
+copy and does not modify or continuously synchronize them.
 
 ## Favicons, recovery and exports
 
