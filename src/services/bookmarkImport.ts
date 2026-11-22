@@ -6,9 +6,7 @@ import { BOOKMARK_IMPORT_LIMITS } from '../constants/bookmarkImport';
 import { getFolderWidthTier } from '../utils/folderDimensions';
 import { getWorkspaceItemDimensions, isValidPosition, toSpatialItems } from '../utils/workspace';
 import type { Dimensions, GridPosition, WorkspaceGeometry, SpatialItem } from '../utils/workspace';
-import { normalizeUrl } from '../utils/url';
-import { summarizeBookmarks } from './bookmarkHtml';
-import { boundBookmarkTitle, RepeatedBookmarkImportError, yieldBookmarkImport } from './bookmarkImportSafety';
+import { boundBookmarkTitle, isEmptyBookmarkImportWorkspace, normalizeImportedBookmark, RepeatedBookmarkImportError, summarizeBookmarks, yieldBookmarkImport } from './bookmarkImportSafety';
 
 // Same initial-placement grid/clearance rules, with bounded batches and only
 // nearby rows in collision checks. The shared Home spatial engine is unchanged.
@@ -45,6 +43,9 @@ async function findImportPosition(items: SpatialItem[], geometry: WorkspaceGeome
 
 export async function importBookmarks(data: OtiumData, request: BookmarkImportRequest, geometry: WorkspaceGeometry) {
   const { nodes, fingerprint, allowRepeat } = request;
+  if (request.onlyIntoEmptyWorkspace && !isEmptyBookmarkImportWorkspace(data)) {
+    throw new Error('Your workspace already has content. Import bookmarks from Settings.');
+  }
   if (!/^[a-f0-9]{64}$/.test(fingerprint)) throw new Error('Unable to identify this bookmark file.');
   if (!allowRepeat && data.bookmarkImports?.some(entry => entry.fingerprint === fingerprint)) throw new RepeatedBookmarkImportError();
   // Build the complete additive snapshot before publishing or persisting it.
@@ -74,12 +75,10 @@ export async function importBookmarks(data: OtiumData, request: BookmarkImportRe
       item = { id: crypto.randomUUID(), type: 'folder', folderId: folder.id, containerId, x: 0, y: 0 };
       for (let index = node.children.length - 1; index >= 0; index--) stack.push({ node: node.children[index], containerId: folder.id });
     } else {
-      if (node.url.length > BOOKMARK_IMPORT_LIMITS.urlCharacters) throw new Error('A bookmark URL is too long.');
-      const url = normalizeUrl(node.url);
-      if (!url) throw new Error('The bookmark import contains an invalid URL.');
-      if (url.length > BOOKMARK_IMPORT_LIMITS.urlCharacters) throw new Error('A bookmark URL is too long.');
+      const bookmark = normalizeImportedBookmark(node.title, node.url);
+      if (!bookmark) throw new Error('The bookmark import contains an invalid URL.');
       // Separate resources retain the current project-ownership assumptions.
-      const link = { id: crypto.randomUUID(), title: boundBookmarkTitle(node.title.trim() || url), url, createdAt: now };
+      const link = { id: crypto.randomUUID(), title: bookmark.title, url: bookmark.url, createdAt: now };
       next.links.push(link);
       item = { id: crypto.randomUUID(), type: 'link', linkId: link.id, containerId, x: 0, y: 0 };
     }

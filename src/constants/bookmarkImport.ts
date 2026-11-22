@@ -3,7 +3,7 @@ export const BOOKMARK_IMPORT_LIMITS = {
   folders: 500,
   bookmarks: 2_000,
   nodes: 2_500,
-  htmlElements: 25_000,
+  sourceEntries: 25_000,
   titleCharacters: 1_024,
   urlCharacters: 8_192,
   batchSize: 128,

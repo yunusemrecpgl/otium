@@ -1,6 +1,6 @@
 import type { WidgetCapability } from '../domain/widget';
 
-type OptionalPermission = 'favicon' | 'scripting' | 'activeTab';
+type OptionalPermission = 'favicon' | 'scripting' | 'activeTab' | 'bookmarks';
 const capabilityPermissions: Record<WidgetCapability, readonly OptionalPermission[]> = {
   'active-page-capture': ['activeTab', 'scripting'], scripting: ['scripting'], favicon: ['favicon'],
   // Enabling external sources never grants host access. Each configured origin
@@ -41,6 +41,14 @@ export const permissionService = {
     const granted = await browserApi()!.permissions!.request({ permissions: [permission] });
     if (permission === 'favicon') { revision++; updateFavicon(granted); }
     return granted;
+  },
+  subscribe(permission: OptionalPermission, onChange: (granted: boolean) => void) {
+    const api = this.isAvailable() ? browserApi()?.permissions : undefined;
+    const added = (details: PermissionDetails) => { if (details.permissions?.includes(permission)) onChange(true); };
+    const removed = (details: PermissionDetails) => { if (details.permissions?.includes(permission)) onChange(false); };
+    api?.onAdded.addListener(added);
+    api?.onRemoved.addListener(removed);
+    return () => { api?.onAdded.removeListener(added); api?.onRemoved.removeListener(removed); };
   },
   async hasCapabilities(capabilities: readonly WidgetCapability[]): Promise<boolean> {
     const permissions = requiredPermissions(capabilities);

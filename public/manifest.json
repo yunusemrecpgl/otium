@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Otium",
   "description": "A local-first browser workspace for organizing links, projects, notes, web data, and more from your new tab.",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "icons": {
     "16": "otium-logo.png",
     "32": "otium-logo.png",
@@ -20,6 +20,9 @@
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
+  "background": {
+    "service_worker": "product-tour-install.js"
+  },
   "permissions": [
     "storage",
     "activeTab"
@@ -30,6 +33,7 @@
   ],
   "optional_permissions": [
     "favicon",
-    "scripting"
+    "scripting",
+    "bookmarks"
   ]
 }

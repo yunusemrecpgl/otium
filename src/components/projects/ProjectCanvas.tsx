@@ -595,7 +595,7 @@ export function ProjectCanvas({ project, overlay, links, items, widgets, onUpdat
           inspectorTarget={selectedIds.size === 1 && selectedIds.has(item.id) ? inspectorTarget : null} appearanceTarget={selectedIds.size === 1 && selectedIds.has(item.id) ? appearanceTarget : null} onQuickActions={registerQuickActions} />)}
         {selectionRect && <div className="project-canvas-marquee" style={{ left: selectionRect.x, top: selectionRect.y,
           width: selectionRect.width, height: selectionRect.height }} />}
-        {!links.length && !widgetNodes.length && <p className="muted project-canvas-empty">{t("No websites yet.")}</p>}
+        {!nodes.length && !widgetNodes.length && <p className="muted project-canvas-empty">{t("Choose a widget to get started.")}</p>}
       </div>
     </div>
     <div className="project-canvas-overlay">{overlay}</div>

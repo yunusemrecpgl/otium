@@ -1,4 +1,4 @@
-export type ViewName = 'home' | 'projects' | 'widgets' | 'trash' | 'settings';
+export type ViewName = 'home' | 'projects' | 'notebook' | 'widgets' | 'trash' | 'settings';
 
 export function WidgetsIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="12" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M14 20h7" /></svg>;

@@ -13,4 +13,5 @@ export interface BookmarkImportRequest {
   nodes: readonly ImportedBookmarkNode[];
   fingerprint: string;
   allowRepeat?: boolean;
+  onlyIntoEmptyWorkspace?: boolean;
 }

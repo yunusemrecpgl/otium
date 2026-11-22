@@ -1,6 +1,7 @@
 export interface StorageProvider {
   read(keys: string[]): Promise<Record<string, unknown>>;
   write(values: Record<string, unknown>): Promise<void>;
+  remove?(key: string): Promise<void>;
   capacity?(replacedKeys: string[]): Promise<{ usedBytes: number; replacedBytes: number; quotaBytes: number }>;
   subscribe?(key: string, onChange: (value: unknown) => void): () => void;
 }
@@ -8,6 +9,7 @@ export interface StorageProvider {
 interface ChromeStorageArea {
   get(keys: string[]): Promise<Record<string, unknown>>;
   set(values: Record<string, unknown>): Promise<void>;
+  remove(key: string): Promise<void>;
   getBytesInUse(keys: string[] | null): Promise<number>;
   QUOTA_BYTES: number;
 }
@@ -26,6 +28,7 @@ function localArea(): ChromeStorageArea {
 export const chromeStorageProvider: StorageProvider = {
   read: (keys) => localArea().get(keys),
   write: (values) => localArea().set(values),
+  remove: (key) => localArea().remove(key),
   async capacity(replacedKeys) {
     const area = localArea();
     const [usedBytes, replacedBytes] = await Promise.all([area.getBytesInUse(null), area.getBytesInUse(replacedKeys)]);

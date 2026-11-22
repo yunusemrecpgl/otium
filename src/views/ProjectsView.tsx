@@ -1,52 +1,48 @@
 import { t, useLocale } from "../i18n";
-import type { Folder } from '../domain/folder';
-import type { WorkspaceItem } from '../domain/workspace';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { Link } from '../domain/link';
-import type { Project, ProjectDraft } from '../domain/project';
+import type { Project } from '../domain/project';
 import { LinkFavicon } from '../components/LinkFavicon';
-import { CreateProjectView } from './CreateProjectView';
 import { resolveProjectLinks } from '../utils/projectLinks';
 import { PROJECT_PREVIEW_LIMIT } from '../constants/project';
 import { preloadProjectPage } from '../services/projectPageLoader';
 
 interface ProjectsViewProps {
-  folders: Folder[];
-  workspaceItems: WorkspaceItem[];
   projects: Project[];
   links: Link[];
-  availableLinks: Link[];
   onOpen: (project: Project) => void;
   ready: boolean;
-  onCreate: (draft: ProjectDraft) => Promise<Project>;
+  onCreate: (baseName: string) => Promise<Project>;
   onSavingChange: (saving: boolean) => void;
 }
 
-export function ProjectsView({ folders, workspaceItems, projects, links, availableLinks, onOpen, ready, onCreate, onSavingChange }: ProjectsViewProps) {
+export function ProjectsView({ projects, links, onOpen, ready, onCreate, onSavingChange }: ProjectsViewProps) {
   useLocale();
   const [creating, setCreating] = useState(false);
-  const [returning, setReturning] = useState(false);
-  const newButton = useRef<HTMLButtonElement>(null);
+  const pending = useRef(false);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (returning) newButton.current?.focus();
-  }, [creating, returning]);
-
-  function closeCreation() {
-    setReturning(true);
-    setCreating(false);
+  async function create() {
+    if (pending.current) return;
+    pending.current = true;
+    setCreating(true);
+    setError('');
+    onSavingChange(true);
+    try { onOpen(await onCreate(t('Untitled Work'))); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : 'Project could not be saved. Please try again.'); }
+    finally { pending.current = false; setCreating(false); onSavingChange(false); }
   }
 
-  if (creating) return <CreateProjectView folders={folders} workspaceItems={workspaceItems} links={links} availableLinks={availableLinks} onCreate={onCreate} onCancel={closeCreation} onComplete={onOpen} onSavingChange={onSavingChange} />;
   const activeProjects = projects.filter(project => !project.trashedAt);
 
   return (
-    <main className={`secondary-view projects-view${returning ? ' page-enter-back' : ''}`}>
+    <main className="secondary-view projects-view">
       <div className="projects-heading">
         <h1>{t("Projects")}</h1>
-        <button ref={newButton} type="button" className="quiet-button" disabled={!ready} onClick={() => { setReturning(false); setCreating(true); }}><span aria-hidden="true">+</span> {t("New Project")}</button>
+        <button type="button" className="quiet-button" disabled={!ready || creating} onClick={() => void create()}><span aria-hidden="true">+</span> {creating ? t("Creating…") : t("New Project")}</button>
       </div>
       {ready && activeProjects.length === 0 && <p className="muted">{t("No projects yet.")}</p>}
+      {error && <p className="form-error" role="alert">{t(error)}</p>}
       <ul className="projects-list">
         {activeProjects.map((project) => {
           const resolved = resolveProjectLinks(project, links);

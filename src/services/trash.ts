@@ -4,13 +4,13 @@ import { findNearestFreePosition, getWorkspaceItemDimensions, toSpatialItems } f
 import type { WorkspaceGeometry } from '../utils/workspace';
 import { canTransferToContainer, getFolderPath } from '../utils/folderHierarchy';
 import { restoreProjectCanvasItem } from './projectCanvasTrash';
-import { isProjectCanvasPlacement, uniqueProjectCanvasPlacements } from './projectCanvasValidation';
+import { uniqueProjectCanvasPlacements } from './projectCanvasValidation';
 
 export const TRASH_DESTINATION = '__otium_trash__';
 
 export function hasPermanentTrash(data: OtiumData): boolean {
   return data.projects.some(item => !!item.trashedAt) || data.folders.some(item => !!item.trashedAt) ||
-    data.workspaceItems.some(item => !!item.trashedAt) || data.projectCanvasItems.some(item => isProjectCanvasPlacement(item) && !!item.trashedAt);
+    data.workspaceItems.some(item => !!item.trashedAt) || uniqueProjectCanvasPlacements(data.projectCanvasItems).some(item => !!item.trashedAt);
 }
 
 export function emptyTrash(data: OtiumData): OtiumData {
@@ -31,24 +31,29 @@ export function emptyTrash(data: OtiumData): OtiumData {
     (item.type === 'folder' && folders.has(item.folderId)) || (item.type === 'project' && projects.has(item.projectId)));
   const removedIds = new Set(removedWorkspace.map(item => item.id));
   const workspaceItems = data.workspaceItems.filter(item => !removedIds.has(item.id));
-  const removedCanvas = data.projectCanvasItems.filter(item => isProjectCanvasPlacement(item) && (item.trashedAt || projects.has(item.projectId)));
-  const canvasIds = new Set(removedCanvas.map(item => item.id));
-  const projectCanvasItems = data.projectCanvasItems.filter(item => !canvasIds.has(item.id));
+  const removedCanvas = uniqueProjectCanvasPlacements(data.projectCanvasItems).filter(item => item.trashedAt || projects.has(item.projectId));
+  const removedPlacements = new Set(removedCanvas);
+  const projectCanvasItems = data.projectCanvasItems.filter(item => !removedPlacements.has(item));
   const remainingProjects = data.projects.filter(item => !projects.has(item.id)).map(project => {
     const removedLinks = new Set(removedCanvas.filter(item => item.projectId === project.id && item.type === 'link').map(item => item.referenceId));
-    const survivingLinks = new Set(projectCanvasItems.filter(item => item.projectId === project.id && item.type === 'link').map(item => item.referenceId));
+    const survivingLinks = new Set(projectCanvasItems.filter(item => item?.projectId === project.id && item.type === 'link').map(item => item.referenceId));
     return { ...project, linkIds: project.linkIds.filter(id => !removedLinks.has(id) || survivingLinks.has(id)) };
   });
+  const projectIds = new Set(data.projects.map(project => project.id));
+  const linkOwners = new Map(data.links.map(link => [link.id, link.projectId]));
   const linkCandidates = new Set([
     ...removedWorkspace.flatMap(item => item.type === 'link' ? [item.linkId] : []),
-    ...removedCanvas.flatMap(item => item.type === 'link' ? [item.referenceId] : []),
+    ...removedCanvas.flatMap(item => {
+      const owner = linkOwners.get(item.referenceId);
+      return item.type === 'link' && projectIds.has(item.projectId) && (!owner || owner === item.projectId) ? [item.referenceId] : [];
+    }),
     ...data.projects.filter(item => projects.has(item.id)).flatMap(item => item.linkIds),
     ...data.links.filter(item => item.projectId && projects.has(item.projectId)).map(item => item.id),
   ]);
   const usedLinks = new Set([...workspaceItems.flatMap(item => item.type === 'link' ? [item.linkId] : []),
-    ...projectCanvasItems.flatMap(item => item.type === 'link' ? [item.referenceId] : []), ...remainingProjects.flatMap(item => item.linkIds)]);
+    ...projectCanvasItems.flatMap(item => item?.type === 'link' ? [item.referenceId] : []), ...remainingProjects.flatMap(item => item.linkIds)]);
   const widgetCandidates = new Set(removedCanvas.filter(item => item.type === 'widget').map(item => item.referenceId));
-  const usedWidgets = new Set(projectCanvasItems.filter(item => item.type === 'widget').map(item => item.referenceId));
+  const usedWidgets = new Set(projectCanvasItems.filter(item => item?.type === 'widget').map(item => item.referenceId));
   return { ...data, workspaceItems, projectCanvasItems, projects: remainingProjects,
     folders: data.folders.filter(item => !folders.has(item.id)),
     projectCanvasStates: data.projectCanvasStates.filter(item => !projects.has(item.projectId)),

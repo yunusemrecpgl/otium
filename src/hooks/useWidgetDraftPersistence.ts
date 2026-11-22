@@ -3,12 +3,13 @@ import { createContext, useCallback, useContext, useEffect, useLayoutEffect, use
 // Portaled widget editors retain this context; selection is still Canvas-owned.
 export const WidgetDraftBoundary = createContext<{ selected: boolean; inspectorOpen: boolean } | null>(null);
 
-export function useWidgetDraftPersistence<T extends object>({ value, save, preview, equals, errorMessage }: {
+export function useWidgetDraftPersistence<T extends object>({ value, save, preview, equals, errorMessage, delay = 450 }: {
   value: T;
   save: (draft: T) => Promise<void>;
   preview?: (draft: T) => void;
   equals?: (a: T, b: T) => boolean;
   errorMessage: string;
+  delay?: number;
 }) {
   const [config, setConfig] = useState(value);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +68,15 @@ export function useWidgetDraftPersistence<T extends object>({ value, save, previ
     if (mounted.current) setConfig(next);
     options.current.preview?.(next);
     cancelTimer();
-    timer.current = setTimeout(() => { void flush(); }, 450);
-  }, [cancelTimer, equal, flush]);
+    timer.current = setTimeout(() => { void flush(); }, delay);
+  }, [cancelTimer, equal, flush, delay]);
   const edit = useCallback((patch: Partial<T>) => replace({ ...latest.current, ...patch }), [replace]);
+  const reset = useCallback((committed: T) => {
+    cancelTimer();
+    latest.current = committed;
+    savedVersion.current = ++version.current;
+    if (mounted.current) { setConfig(committed); setError(null); }
+  }, [cancelTimer]);
 
   useLayoutEffect(() => {
     // Shared Project previews already include our pending edits and may merge
@@ -100,5 +107,5 @@ export function useWidgetDraftPersistence<T extends object>({ value, save, previ
     };
   }, [flush]);
 
-  return { config, latest, error, flush, edit, replace };
+  return { config, latest, error, flush, edit, replace, reset };
 }

@@ -7,9 +7,10 @@ import type { ProjectCanvasItem } from './projectCanvasItem';
 import type { ProjectCanvasState } from './projectCanvasState';
 import type { WidgetInstance } from './widget';
 import type { BookmarkImportMetadata } from './importedBookmarks';
+import type { NotebookData } from './notebook';
 
 export interface OtiumData {
-  schemaVersion: 2;
+  schemaVersion: 3;
   links: Link[];
   projects: Project[];
   folders: Folder[];
@@ -19,4 +20,5 @@ export interface OtiumData {
   widgetInstances: WidgetInstance[];
   settings: UserSettings;
   bookmarkImports?: BookmarkImportMetadata[];
+  notebook?: NotebookData;
 }

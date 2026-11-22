@@ -4,12 +4,14 @@ import { migrateLegacyData, parseCurrentData, SCHEMA_VERSION } from './migration
 
 export const RECOVERY_KEY = 'recoveryData';
 export const RECOVERY_REFRESH_MS = 24 * 60 * 60 * 1000;
+// V1 must not offer to restore a raw schema-2 snapshot over schema 3.
+export const RECOVERY_VERSION = 2;
 
 export class UnsupportedStorageVersionError extends Error {}
 
 export interface RecoverySnapshot {
   type: 'otium-recovery';
-  recoveryVersion: 1;
+  recoveryVersion: 1 | typeof RECOVERY_VERSION;
   createdAt: number;
   schemaVersion: number;
   data: unknown;
@@ -50,10 +52,10 @@ export function parseSupportedData(value: unknown): OtiumData {
 
 export function validateRecovery(value: unknown): { snapshot: RecoverySnapshot; data: OtiumData } {
   const envelope = record(value);
-  if (envelope?.type === 'otium-recovery' && typeof envelope.recoveryVersion === 'number' && envelope.recoveryVersion > 1) {
+  if (envelope?.type === 'otium-recovery' && typeof envelope.recoveryVersion === 'number' && envelope.recoveryVersion > RECOVERY_VERSION) {
     throw new UnsupportedStorageVersionError('This recovery snapshot requires a newer Otium version. Original data has been preserved.');
   }
-  if (!envelope || envelope.type !== 'otium-recovery' || envelope.recoveryVersion !== 1 ||
+  if (!envelope || envelope.type !== 'otium-recovery' || (envelope.recoveryVersion !== 1 && envelope.recoveryVersion !== RECOVERY_VERSION) ||
       typeof envelope.createdAt !== 'number' || !Number.isFinite(envelope.createdAt) || envelope.createdAt <= 0 ||
       (envelope.format !== undefined && envelope.format !== 'legacy')) {
     throw new Error('No supported, valid recovery snapshot is available.');

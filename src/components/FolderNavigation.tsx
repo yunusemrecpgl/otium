@@ -2,6 +2,8 @@ import { t, useLocale } from "../i18n";
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Folder } from '../domain/folder';
 import { FolderIcon } from './FolderIcon';
+import { SORTABLE_DRAG_THRESHOLD } from '../constants/sortable';
+import { folderNavigationOrder } from '../services/storage';
 
 interface Props {
   path: Folder[];
@@ -18,6 +20,22 @@ export function FolderNavigation({ path, roots, containerId, target, disabled, o
   const nav = useRef<HTMLElement>(null);
   const [width, setWidth] = useState(0);
   const breadcrumb = path.length > 1;
+  const [order, setOrder] = useState<string[]>([]);
+  const [preview, setPreview] = useState<{ id: string; anchor?: string; after?: boolean } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const drag = useRef<{ pointer: number; x: number; y: number; active: boolean } | null>(null);
+  const suppressClick = useRef(false);
+  useEffect(() => {
+    let active = true;
+    let changed = false;
+    let unsubscribe = () => {};
+    try { unsubscribe = folderNavigationOrder.subscribe(value => { changed = true; setOrder(value); }); }
+    catch (cause) { setSaveError(cause instanceof Error ? cause.message : String(cause)); }
+    void folderNavigationOrder.read().then(value => { if (active && !changed) setOrder(value); })
+      .catch(cause => { if (active) setSaveError(String(cause instanceof Error ? cause.message : cause)); });
+    return () => { active = false; unsubscribe(); };
+  }, []);
   const previous = useRef<{ containerId: string; breadcrumb: boolean; buttons: Map<string, Snapshot> } | null>(null);
   const cleanup = useRef<(() => void)[]>([]);
   useEffect(() => {
@@ -29,7 +47,8 @@ export function FolderNavigation({ path, roots, containerId, target, disabled, o
     return () => { observer.disconnect(); cleanup.current.forEach(clean => clean()); };
   }, []);
 
-  let visible = breadcrumb ? path : roots;
+  const rank = new Map(order.map((id, index) => [id, index]));
+  let visible = breadcrumb ? path : [...roots].sort((a, b) => (rank.get(a.id) ?? Infinity) - (rank.get(b.id) ?? Infinity));
   let collapsed: Folder[] = [];
   if (breadcrumb && width > 0) {
     const required = 90 + path.reduce((sum, folder) => sum + Math.min(240, 65 + folder.name.length * 7) + 24, 0);
@@ -81,9 +100,50 @@ export function FolderNavigation({ path, roots, containerId, target, disabled, o
 
   function destination(folder: Pick<Folder, 'id' | 'name' | 'icon'>, menu = false) {
     const label = folder.name.trim() || `${folder.icon} folder`;
+    const sortable = !breadcrumb && !menu && folder.id !== 'home';
+    const hit = (x: number, y: number) => {
+      const button = [...(nav.current?.querySelectorAll<HTMLButtonElement>(':scope > button[data-nav-sortable]') ?? [])].find(node => {
+        const rect = node.getBoundingClientRect();
+        return x >= rect.left - 4 && x <= rect.right + 4 && y >= rect.top && y <= rect.bottom;
+      });
+      if (!button || button.dataset.navId === folder.id) return null;
+      const rect = button.getBoundingClientRect();
+      return { anchor: button.dataset.navId!, after: x >= rect.left + rect.width / 2 };
+    };
+    const clear = () => { drag.current = null; setPreview(null); };
     return <button type="button" key={folder.id} data-nav-id={menu ? undefined : folder.id} data-destination-id={folder.id}
+      data-nav-sortable={sortable || undefined} data-nav-dragging={preview?.id === folder.id || undefined}
+      data-nav-insert={preview?.anchor === folder.id ? preview.after ? 'after' : 'before' : undefined}
+      onPointerDown={sortable ? event => {
+        if (!event.isPrimary || event.button !== 0 || disabled || saving) return;
+        suppressClick.current = false;
+        drag.current = { pointer: event.pointerId, x: event.clientX, y: event.clientY, active: false };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } : undefined}
+      onPointerMove={sortable ? event => {
+        const gesture = drag.current;
+        if (!gesture || gesture.pointer !== event.pointerId) return;
+        if (!gesture.active && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) < SORTABLE_DRAG_THRESHOLD) return;
+        gesture.active = true;
+        suppressClick.current = true;
+        setPreview({ id: folder.id, ...hit(event.clientX, event.clientY) });
+      } : undefined}
+      onPointerUp={sortable ? event => {
+        const gesture = drag.current;
+        if (!gesture || gesture.pointer !== event.pointerId) return;
+        clear();
+        const drop = gesture.active && hit(event.clientX, event.clientY);
+        if (!drop || disabled) return;
+        setSaving(true);
+        setSaveError('');
+        void folderNavigationOrder.move(folder.id, drop.anchor, drop.after, roots.map(root => root.id))
+          .then(setOrder).catch(cause => setSaveError(cause instanceof Error ? cause.message : String(cause)))
+          .finally(() => setSaving(false));
+      } : undefined}
+      onPointerCancel={sortable ? clear : undefined} onLostPointerCapture={sortable ? clear : undefined}
       className={target === folder.id ? 'is-transfer-target' : ''} aria-label={t("Go to {0}", { 0: label })} title={label}
       aria-current={folder.id === containerId ? 'page' : undefined} disabled={disabled} onClick={event => {
+        if (sortable && event.detail !== 0 && suppressClick.current) { suppressClick.current = false; return; }
         if (menu) event.currentTarget.closest('details')?.removeAttribute('open');
         onNavigate(folder.id);
       }}><FolderIcon icon={folder.icon} />{folder.name.trim() && <span>{folder.name}</span>}</button>;
@@ -96,5 +156,6 @@ export function FolderNavigation({ path, roots, containerId, target, disabled, o
       {destination(folder)}
       {collapsed.length > 0 && visible.length > 1 && index === 0 && <><span className="breadcrumb-separator" aria-hidden="true">›</span><details className="breadcrumb-overflow"><summary aria-label={t("More ancestors")}>…</summary><div>{collapsed.map(ancestor => destination(ancestor, true))}</div></details></>}
     </Fragment>)}
+    {saveError && <span className="form-error" role="alert">{t(saveError)}</span>}
   </nav>;
 }

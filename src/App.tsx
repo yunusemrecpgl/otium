@@ -16,6 +16,9 @@ import { TrashView } from './views/TrashView';
 import { WidgetsView } from './views/WidgetsView';
 import { WorkspaceRecovery } from './components/settings/DataRecovery';
 import { WebsiteIconsOnboarding } from './components/settings/WebsiteIconsOnboarding';
+import { BrowserBookmarkOnboarding } from './components/settings/BrowserBookmarkOnboarding';
+import { ProductTour } from './components/navigation/ProductTour';
+import { isEmptyBookmarkImportWorkspace } from './services/bookmarkImportSafety';
 import './App.css';
 import { setLocale } from './i18n';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -23,6 +26,7 @@ import { useBrowserColorScheme } from './hooks/useBrowserColorScheme';
 
 const ProjectPage = lazy(() => loadProjectPage().then(module => ({ default: module.ProjectPage })));
 const ProjectsView = lazy(() => import('./views/ProjectsView').then(module => ({ default: module.ProjectsView })));
+const NotebookView = lazy(() => import('./views/NotebookView').then(module => ({ default: module.NotebookView })));
 
 function WorkspaceLoading() {
   useLocale();
@@ -40,11 +44,14 @@ function App() {
   const firstWorkspacePainted = useRef(false);
   useEffect(() => { if (ready) firstWorkspacePainted.current = true; }, [ready]);
   const [view, setView] = useState<ViewName>(window.location.hash === '#widgets' ? 'widgets' : 'home');
+  const flushNotebook = useRef<(() => Promise<boolean>) | null>(null);
+  const [leavingNotebook, setLeavingNotebook] = useState(false);
   const [projectSaving, setProjectSaving] = useState(false);
   const [importing, setImporting] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const currentProject = projects.find(project => project.id === projectId);
   const availableLinks = availableProjectLinks(data.links, data.workspaceItems);
+  const workspaceEmpty = ready && isEmptyBookmarkImportWorkspace(data);
   useEffect(() => {
     if (ready && projectId && !currentProject) { setProjectId(null); setProjectSaving(false); }
   }, [ready, projectId, currentProject]);
@@ -57,7 +64,13 @@ function App() {
     '--sidebar-width': `${SIDEBAR_WIDTH}px`,
   };
 
-  function navigate(next: ViewName) {
+  async function navigate(next: ViewName) {
+    if (view === 'notebook') {
+      if (next === view || leavingNotebook) return;
+      setLeavingNotebook(true);
+      try { if (await flushNotebook.current?.() === false) return; }
+      finally { setLeavingNotebook(false); }
+    }
     flushSettings();
     setProjectId(null);
     setView(next);
@@ -69,7 +82,7 @@ function App() {
 
   return (
     <div className="otium-app" data-theme={theme} data-booting={!firstWorkspacePainted.current || undefined} style={style} aria-busy={!ready && !loadError}>
-      <Sidebar active={view} onNavigate={navigate} disabled={!ready || projectSaving || importing} />
+      <Sidebar active={view} onNavigate={navigate} disabled={!ready || projectSaving || importing || leavingNotebook} />
       <div className="active-view">
         {loadError ? <WorkspaceRecovery error={t(loadError)} onRetry={retryLoad} /> : !ready ? <WorkspaceLoading /> : <Suspense fallback={<WorkspaceLoading />}>
         {view === 'home' && ready && <HomeView revealState={homeRevealSeen} data={data} theme={theme} onAdd={addLink} onMove={moveItem} onMoveBatch={moveItems}
@@ -85,8 +98,10 @@ function App() {
           addedToHome={data.workspaceItems.some(item => item.type === 'project' && item.projectId === currentProject.id && item.containerId === 'home' && !item.trashedAt)}
           onBack={() => setProjectId(null)} onSave={draft => updateProject(draft.id, draft)} onAddToHome={addProjectToHome} onSavingChange={setProjectSaving}
           onSetColor={setProjectColor} onDelete={deleteProject} />
-          : <ProjectsView folders={data.folders} workspaceItems={data.workspaceItems} projects={projects} links={data.links} availableLinks={availableLinks} onOpen={openProject} ready={ready} onCreate={createProject} onSavingChange={setProjectSaving} />)}
+          : <ProjectsView projects={projects} links={data.links} onOpen={openProject} ready={ready} onCreate={createProject} onSavingChange={setProjectSaving} />)}
         {view === 'widgets' && <WidgetsView enabledWidgetTypes={enabledTypes} />}
+        {view === 'notebook' && <NotebookView notebook={data.notebook} flush={flushNotebook}
+          theme={theme} onToggleTheme={() => { setAppearance({ theme: theme === 'light' ? 'dark' : 'light' }); flushSettings(); }} />}
         {view === 'settings' && <SettingsView appearance={data.settings.appearance} onChange={setAppearance} onCommit={flushSettings} disabled={!ready || importing}
           onImport={importBookmarks} onImportBusyChange={setImporting} />}
         {view === 'trash' && ready && <TrashView data={data} onRestore={restoreItem} onEmpty={emptyTrash} />}
@@ -94,6 +109,10 @@ function App() {
         </Suspense>}
       </div>
       {ready && <WebsiteIconsOnboarding />}
+      {ready && !loadError && <>
+        <BrowserBookmarkOnboarding workspaceEmpty={workspaceEmpty} onImport={importBookmarks} />
+        <ProductTour workspaceEmpty={workspaceEmpty} />
+      </>}
     </div>
   );
 }
