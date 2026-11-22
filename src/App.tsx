@@ -17,6 +17,7 @@ import { WidgetsView } from './views/WidgetsView';
 import { WorkspaceRecovery } from './components/settings/DataRecovery';
 import { WebsiteIconsOnboarding } from './components/settings/WebsiteIconsOnboarding';
 import { BrowserBookmarkOnboarding } from './components/settings/BrowserBookmarkOnboarding';
+import { ProductTour } from './components/navigation/ProductTour';
 import { isEmptyBookmarkImportWorkspace } from './services/bookmarkImportSafety';
 import './App.css';
 import { setLocale } from './i18n';
@@ -50,6 +51,7 @@ function App() {
   const [projectId, setProjectId] = useState<string | null>(null);
   const currentProject = projects.find(project => project.id === projectId);
   const availableLinks = availableProjectLinks(data.links, data.workspaceItems);
+  const workspaceEmpty = ready && isEmptyBookmarkImportWorkspace(data);
   useEffect(() => {
     if (ready && projectId && !currentProject) { setProjectId(null); setProjectSaving(false); }
   }, [ready, projectId, currentProject]);
@@ -107,7 +109,10 @@ function App() {
         </Suspense>}
       </div>
       {ready && <WebsiteIconsOnboarding />}
-      {ready && !loadError && <BrowserBookmarkOnboarding workspaceEmpty={isEmptyBookmarkImportWorkspace(data)} onImport={importBookmarks} />}
+      {ready && !loadError && <>
+        <BrowserBookmarkOnboarding workspaceEmpty={workspaceEmpty} onImport={importBookmarks} />
+        <ProductTour workspaceEmpty={workspaceEmpty} />
+      </>}
     </div>
   );
 }

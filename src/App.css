@@ -646,6 +646,30 @@ button:disabled {
   margin-top: 0;
 }
 .widgets-nav { margin-top: auto; }
+.nav-button[data-tour-highlight] {
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--color-text-secondary);
+  background: var(--color-control-hover);
+  color: var(--color-text-primary);
+}
+.product-tour {
+  position: fixed;
+  z-index: 25;
+  width: 288px;
+  box-sizing: border-box;
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--color-item-border);
+  border-radius: 9px;
+  background: var(--color-modal-background);
+  color: var(--color-text-primary);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 14%);
+}
+.product-tour-header { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 6px; }
+.product-tour h2 { margin: 0; font-size: 15px; }
+.product-tour-header span, .product-tour p { color: var(--color-text-secondary); font-size: 13px; }
+.product-tour p { margin: 8px 0 12px; line-height: 1.45; }
+.product-tour-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 6px; }
 .sidebar-brand { display: grid; place-items: center; width: 28px; height: 24px; color: var(--color-text-secondary); opacity: .6; font-size: 11px; font-weight: 600; letter-spacing: -.03em; text-decoration: none; border-radius: 4px; flex-shrink: 0; }
 .sidebar-brand:hover { opacity: 1; }
 .proje4-logo {

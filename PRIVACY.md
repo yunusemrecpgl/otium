@@ -1,4 +1,4 @@
-# Otium privacy — v0.1
+# Otium privacy — v0.2.0
 
 ## Local workspace data
 
@@ -39,6 +39,11 @@ may themselves contain identifying query parameters. Opening a source uses
 normal browser navigation, including that site's normal session behavior.
 
 ## Quick Capture and bookmarks
+
+Otium requires `storage` and `activeTab`. Browser favicon access, scripting
+for page-text reads, direct bookmark access, and HTTP(S) source-origin
+access are optional. See [Permissions](PERMISSIONS.md) for when Otium
+requests each of them.
 
 Opening Otium's action popup reads the active page's URL/title and checks for
 selected plain text. It may read short surrounding text to build a source

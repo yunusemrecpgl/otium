@@ -1,7 +1,7 @@
 {
   "name": "otium",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "A local-first browser workspace for organizing links, projects, notes, web data, and more from your new tab.",
   "type": "module",
   "scripts": {
